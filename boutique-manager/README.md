@@ -37,14 +37,13 @@ boutique-manager/
 │   ├── src/storage/             # JWT SecureStore uniquement
 │   └── .env.example
 ├── server/
-│   ├── api/index.ts             # entrée Vercel
 │   ├── src/controllers/
 │   ├── src/middleware/
 │   ├── src/models/
 │   ├── src/routes/
 │   ├── src/services/
 │   ├── src/app.ts               # application Express exportée
-│   ├── src/index.ts             # écoute locale
+│   ├── src/index.ts             # entrée Express Vercel et écoute locale
 │   ├── vercel.json
 │   └── .env.example
 └── .gitignore
@@ -157,17 +156,18 @@ npm run lint
 1. Pousser le repository dans Git.
 2. Dans Vercel, créer un projet et importer ce repository.
 3. Définir **Root Directory** sur `boutique-manager/server` (ou `server` si `boutique-manager` est lui-même la racine du repository déployé).
-4. Dans **Settings → Environment Variables**, ajouter :
+4. Dans **Build and Deployment Settings**, utiliser **Framework Preset: Express** et laisser **Build Command** et **Output Directory** sur leur valeur par défaut (sans override). `vercel.json` impose également ces valeurs afin d’éviter que Vercel cherche un dossier statique `public`.
+5. Dans **Settings → Environment Variables**, ajouter :
    - `MONGODB_URI`;
    - `JWT_SECRET` (32 caractères minimum, valeur aléatoire);
    - `JWT_EXPIRES_IN=7d`;
    - `MOCK_AUTH_ENABLED=true` pour le test uniquement.
 
-5. Dans **Storage**, créer ou connecter le Vercel Blob Store public au projet backend et activer la connexion OIDC.
-6. Déployer.
-7. Tester `https://votre-backend.vercel.app/api/health`.
-8. Placer `https://votre-backend.vercel.app` dans `mobile/.env` comme `EXPO_PUBLIC_SERVER_URL`.
-9. Relancer Expo puis scanner de nouveau le QR code.
+6. Dans **Storage**, créer ou connecter le Vercel Blob Store public au projet backend et activer la connexion OIDC.
+7. Déployer.
+8. Tester `https://votre-backend.vercel.app/api/health`.
+9. Placer `https://votre-backend.vercel.app` dans `mobile/.env` comme `EXPO_PUBLIC_SERVER_URL`.
+10. Relancer Expo puis scanner de nouveau le QR code.
 
 Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones configurés avec la même URL Vercel partagent les mêmes données Atlas et les mêmes images Blob.
 
