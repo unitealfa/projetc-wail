@@ -39,9 +39,6 @@ export const getProduct: RequestHandler = asyncHandler(async (request, response)
 });
 
 export const createProduct: RequestHandler = asyncHandler(async (request, response) => {
-  if (!request.file) {
-    throw new ApiError(400, "L'image du produit est obligatoire.", 'IMAGE_REQUIRED');
-  }
   const input = createProductSchema.parse(parseMultipartData(request.body.data));
   const shopId = routeParam(request.params.shopId, 'Boutique');
   const product = await createProductService(shopId, request.user!._id, input, request.file);

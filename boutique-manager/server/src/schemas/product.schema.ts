@@ -10,8 +10,8 @@ const optionalText = (maximum: number) =>
 
 const productFields = z.object({
   name: z.string().trim().min(2).max(120),
-  type: z.string().trim().min(1).max(60),
-  brand: z.string().trim().min(1).max(80),
+  type: optionalText(60),
+  brand: optionalText(80),
   model: optionalText(120),
   reference: optionalText(120),
   sku: optionalText(120),

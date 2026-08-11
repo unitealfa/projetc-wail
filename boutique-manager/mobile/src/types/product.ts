@@ -5,8 +5,8 @@ export interface CustomAttribute {
 
 export interface ProductInput {
   name: string;
-  type: string;
-  brand: string;
+  type?: string;
+  brand?: string;
   model?: string;
   reference?: string;
   sku?: string;
@@ -26,8 +26,8 @@ export interface Product extends ProductInput {
   _id: string;
   shopId: string;
   internalCode: string;
-  imageUrl: string;
-  imageStorageKey: string;
+  imageUrl?: string;
+  imageStorageKey?: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -18,7 +18,7 @@ export const productsApi = {
     apiRequest<{ products: Product[] }>(`/api/shops/${shopId}/products`),
   get: (shopId: string, productId: string) =>
     apiRequest<{ product: Product }>(`/api/shops/${shopId}/products/${productId}`),
-  create: (shopId: string, input: ProductInput, image: PickedImage) =>
+  create: (shopId: string, input: ProductInput, image?: PickedImage) =>
     apiRequest<{ product: Product }>(`/api/shops/${shopId}/products`, {
       method: 'POST',
       formData: productFormData(input, image),

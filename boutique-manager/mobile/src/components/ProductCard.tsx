@@ -6,10 +6,14 @@ import { AppButton } from './AppButton';
 export function ProductCard({ product, busy, onEdit, onDelete }: { product: Product; busy: boolean; onEdit: () => void; onDelete: () => void }) {
   return (
     <View style={styles.card}>
-      <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="cover" />
+      {product.imageUrl ? (
+        <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="cover" />
+      ) : (
+        <View style={[styles.image, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Sans image</Text></View>
+      )}
       <View style={styles.content}>
         <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.meta}>{product.type} · {product.brand}</Text>
+        {product.type || product.brand ? <Text style={styles.meta}>{[product.type, product.brand].filter(Boolean).join(' · ')}</Text> : null}
         <Text style={styles.meta}>Couleurs : {product.colors.join(', ')}</Text>
         {product.reference ? <Text style={styles.meta}>Référence : {product.reference}</Text> : null}
         {product.stock !== undefined ? <Text style={styles.meta}>Stock : {product.stock}</Text> : null}
@@ -25,6 +29,8 @@ export function ProductCard({ product, busy, onEdit, onDelete }: { product: Prod
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
   image: { width: '100%', height: 190, backgroundColor: '#E2E8F0' },
+  imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  imagePlaceholderText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   content: { padding: 14, gap: 5 },
   name: { color: colors.text, fontSize: 19, fontWeight: '800' },
   meta: { color: colors.muted, fontSize: 14 },

@@ -9,8 +9,8 @@ export interface IProduct {
   shopId: Types.ObjectId;
   internalCode: string;
   name: string;
-  type: string;
-  brand: string;
+  type?: string;
+  brand?: string;
   model?: string;
   reference?: string;
   sku?: string;
@@ -23,8 +23,8 @@ export interface IProduct {
   price?: number;
   currency?: string;
   stock?: number;
-  imageUrl: string;
-  imageStorageKey: string;
+  imageUrl?: string;
+  imageStorageKey?: string;
   customAttributes: ICustomAttribute[];
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
@@ -47,8 +47,8 @@ const productSchema = new Schema<IProduct>(
     shopId: { type: Schema.Types.ObjectId, ref: 'Shop', required: true, index: true },
     internalCode: { type: String, required: true, unique: true, immutable: true },
     name: { type: String, required: true, trim: true },
-    type: { type: String, required: true, trim: true },
-    brand: { type: String, required: true, trim: true },
+    type: { type: String, trim: true },
+    brand: { type: String, trim: true },
     model: { type: String, trim: true },
     reference: { type: String, trim: true },
     sku: { type: String, trim: true },
@@ -61,8 +61,8 @@ const productSchema = new Schema<IProduct>(
     price: { type: Number, min: 0 },
     currency: { type: String, trim: true },
     stock: { type: Number, min: 0 },
-    imageUrl: { type: String, required: true },
-    imageStorageKey: { type: String, required: true },
+    imageUrl: { type: String },
+    imageStorageKey: { type: String },
     customAttributes: { type: [customAttributeSchema], default: [] },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

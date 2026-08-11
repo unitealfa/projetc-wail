@@ -5,30 +5,45 @@ import { ApiError } from '../utils/ApiError.js';
 import { createProductCode } from '../utils/productCode.js';
 import { deleteProductImage, uploadProductImage } from './storage.service.js';
 
+async function tryUploadProductImage(shopId: string, image?: Express.Multer.File) {
+  if (!image) return null;
+
+  try {
+    return await uploadProductImage(shopId, image);
+  } catch (error) {
+    console.error("Upload Blob indisponible, le produit sera enregistré sans image.", {
+      name: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return null;
+  }
+}
+
 export async function createProduct(
   shopId: string,
   userId: Types.ObjectId,
   input: CreateProductInput,
-  image: Express.Multer.File,
+  image?: Express.Multer.File,
 ) {
-  const storedImage = await uploadProductImage(shopId, image);
+  const storedImage = await tryUploadProductImage(shopId, image);
   try {
     return await Product.create({
       ...input,
       shopId,
-      ...storedImage,
+      ...(storedImage ?? {}),
       internalCode: createProductCode(),
       createdBy: userId,
       updatedBy: userId,
     });
   } catch (error) {
-    try {
-      await deleteProductImage(storedImage.imageStorageKey);
-    } catch (cleanupError) {
-      console.error('Nettoyage du nouveau Blob échoué après erreur MongoDB.', {
-        storageKey: storedImage.imageStorageKey,
-        reason: cleanupError instanceof Error ? cleanupError.message : 'Erreur inconnue',
-      });
+    if (storedImage) {
+      try {
+        await deleteProductImage(storedImage.imageStorageKey);
+      } catch (cleanupError) {
+        console.error('Nettoyage du nouveau Blob échoué après erreur MongoDB.', {
+          storageKey: storedImage.imageStorageKey,
+          reason: cleanupError instanceof Error ? cleanupError.message : 'Erreur inconnue',
+        });
+      }
     }
     throw error;
   }
@@ -46,7 +61,7 @@ export async function updateProduct(
     throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
   }
 
-  const newImage = image ? await uploadProductImage(shopId, image) : null;
+  const newImage = await tryUploadProductImage(shopId, image);
   const oldStorageKey = existing.imageStorageKey;
 
   try {
@@ -59,7 +74,7 @@ export async function updateProduct(
       throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
     }
 
-    if (newImage) {
+    if (newImage && oldStorageKey) {
       try {
         await deleteProductImage(oldStorageKey);
       } catch (error) {
@@ -92,13 +107,15 @@ export async function deleteProduct(shopId: string, productId: string): Promise<
     throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
   }
   await product.deleteOne();
-  try {
-    await deleteProductImage(product.imageStorageKey);
-  } catch (error) {
-    console.error('Suppression Blob échouée après suppression produit.', {
-      productId,
-      storageKey: product.imageStorageKey,
-      reason: error instanceof Error ? error.message : 'Erreur inconnue',
-    });
+  if (product.imageStorageKey) {
+    try {
+      await deleteProductImage(product.imageStorageKey);
+    } catch (error) {
+      console.error('Suppression Blob échouée après suppression produit.', {
+        productId,
+        storageKey: product.imageStorageKey,
+        reason: error instanceof Error ? error.message : 'Erreur inconnue',
+      });
+    }
   }
 }

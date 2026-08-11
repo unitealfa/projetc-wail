@@ -14,16 +14,16 @@ interface ProductFormProps {
   initialProduct?: Product;
   submitting: boolean;
   submitLabel: string;
-  requireImage: boolean;
   onSubmit: (input: ProductInput, image?: PickedImage) => Promise<void>;
 }
 
-export function ProductForm({ initialProduct, submitting, submitLabel, requireImage, onSubmit }: ProductFormProps) {
-  const knownType = initialProduct && PRODUCT_TYPES.includes(initialProduct.type) ? initialProduct.type : 'Autre';
+export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit }: ProductFormProps) {
+  const initialType = initialProduct?.type?.trim();
+  const knownType = initialType ? (PRODUCT_TYPES.includes(initialType) ? initialType : 'Autre') : '';
   const [image, setImage] = useState<PickedImage>();
   const [name, setName] = useState(initialProduct?.name ?? '');
-  const [selectedType, setSelectedType] = useState(knownType ?? 'Pantalon');
-  const [otherType, setOtherType] = useState(knownType === 'Autre' ? initialProduct?.type ?? '' : '');
+  const [selectedType, setSelectedType] = useState(knownType);
+  const [otherType, setOtherType] = useState(knownType === 'Autre' ? initialType ?? '' : '');
   const [brand, setBrand] = useState(initialProduct?.brand ?? '');
   const [model, setModel] = useState(initialProduct?.model ?? '');
   const [reference, setReference] = useState(initialProduct?.reference ?? '');
@@ -68,22 +68,18 @@ export function ProductForm({ initialProduct, submitting, submitLabel, requireIm
 
   const submit = async () => {
     setError(undefined);
-    const finalType = selectedType === 'Autre' ? otherType.trim() : selectedType;
+    const finalType = selectedType === 'Autre' ? otherType.trim() || undefined : selectedType || undefined;
     const colorValues = commaSeparatedValues(colorsText);
     const numericPrice = price.trim() === '' ? undefined : Number(price.replace(',', '.'));
     const numericStock = stock.trim() === '' ? undefined : Number(stock);
     const cleanAttributes = attributes.map((item) => ({ key: item.key.trim(), value: item.value.trim() }));
 
-    if (!name.trim() || name.trim().length < 2 || !finalType || !brand.trim()) {
-      setError('Nom (2 caractères minimum), type et marque sont obligatoires.');
+    if (!name.trim() || name.trim().length < 2) {
+      setError('Le nom doit contenir au moins 2 caractères.');
       return;
     }
     if (colorValues.length === 0) {
       setError('Ajoutez au moins une couleur.');
-      return;
-    }
-    if (requireImage && !image) {
-      setError('Choisissez une image pour le produit.');
       return;
     }
     if (numericPrice !== undefined && (!Number.isFinite(numericPrice) || numericPrice < 0)) {
@@ -101,7 +97,7 @@ export function ProductForm({ initialProduct, submitting, submitLabel, requireIm
 
     const optional = (value: string) => value.trim() || undefined;
     await onSubmit({
-      name: name.trim(), type: finalType, brand: brand.trim(), model: optional(model), reference: optional(reference),
+      name: name.trim(), type: finalType, brand: optional(brand), model: optional(model), reference: optional(reference),
       sku: optional(sku), barcode: optional(barcode), colors: colorValues, sizes: commaSeparatedValues(sizesText),
       material: optional(material), targetAudience: optional(targetAudience), description: optional(description),
       price: numericPrice, currency: optional(currency), stock: numericStock, customAttributes: cleanAttributes,
@@ -111,21 +107,25 @@ export function ProductForm({ initialProduct, submitting, submitLabel, requireIm
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Section title="IMAGE">
-        <Image source={{ uri: image?.uri ?? initialProduct?.imageUrl }} style={styles.preview} resizeMode="cover" />
-        <AppButton title="Choisir une image" variant="secondary" disabled={submitting} onPress={() => void pickImage()} />
-        <Text style={styles.hint}>JPEG, PNG ou WEBP · 3 Mio maximum</Text>
+        {image?.uri || initialProduct?.imageUrl ? (
+          <Image source={{ uri: image?.uri ?? initialProduct?.imageUrl }} style={styles.preview} resizeMode="cover" />
+        ) : (
+          <View style={[styles.preview, styles.previewPlaceholder]}><Text style={styles.hint}>Aucune image</Text></View>
+        )}
+        <AppButton title="Choisir une image (facultatif)" variant="secondary" disabled={submitting} onPress={() => void pickImage()} />
+        <Text style={styles.hint}>Facultatif · JPEG, PNG ou WEBP · 3 Mio maximum</Text>
       </Section>
 
       <Section title="IDENTIFICATION">
         <AppInput label="Nom *" value={name} onChangeText={setName} maxLength={120} />
-        <Text style={styles.label}>Type *</Text>
-        <View style={styles.typeList}>{PRODUCT_TYPES.map((item) => (
+        <Text style={styles.label}>Type (facultatif)</Text>
+        <View style={styles.typeList}>{['', ...PRODUCT_TYPES].map((item) => (
           <Pressable key={item} onPress={() => setSelectedType(item)} style={[styles.typeChip, selectedType === item && styles.typeChipSelected]}>
-            <Text style={[styles.typeText, selectedType === item && styles.typeTextSelected]}>{item}</Text>
+            <Text style={[styles.typeText, selectedType === item && styles.typeTextSelected]}>{item || 'Non renseigné'}</Text>
           </Pressable>
         ))}</View>
-        {selectedType === 'Autre' ? <AppInput label="Autre type *" value={otherType} onChangeText={setOtherType} maxLength={60} /> : null}
-        <AppInput label="Marque *" value={brand} onChangeText={setBrand} maxLength={80} />
+        {selectedType === 'Autre' ? <AppInput label="Autre type" value={otherType} onChangeText={setOtherType} maxLength={60} /> : null}
+        <AppInput label="Marque" value={brand} onChangeText={setBrand} maxLength={80} />
         <AppInput label="Modèle" value={model} onChangeText={setModel} />
         <AppInput label="Référence" value={reference} onChangeText={setReference} />
         <AppInput label="SKU" value={sku} onChangeText={setSku} />
@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 15, gap: 12 },
   sectionTitle: { color: colors.primary, fontSize: 14, fontWeight: '900', letterSpacing: 0.7 },
   preview: { width: '100%', height: 220, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  previewPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   hint: { color: colors.muted, fontSize: 12, textAlign: 'center' },
   label: { color: colors.text, fontSize: 14, fontWeight: '600' },
   typeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

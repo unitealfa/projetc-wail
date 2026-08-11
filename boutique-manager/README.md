@@ -194,7 +194,7 @@ Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones co
 
 1. Se déconnecter puis choisir **Boutique**. Avec une boutique, la connexion est directe; avec plusieurs, une liste est affichée.
 2. Ouvrir **Produits**, puis **+ Ajouter un produit**.
-3. Sélectionner une image de moins de 3 Mio et renseigner nom, type, marque, couleurs et les champs souhaités.
+3. Renseigner au minimum le nom et une couleur. L’image (moins de 3 Mio), le type, la marque et les autres informations sont facultatifs pendant la phase de test.
 4. Créer, modifier le stock/couleurs, puis éventuellement remplacer l’image.
 5. Se reconnecter ADMIN, ouvrir Users → Nike Alger → **Gérer les produits** et vérifier qu’il s’agit du même document.
 6. Tester avec un token d’une autre boutique : toutes les routes `/api/shops/{AUTRE_SHOP}/products` doivent répondre `403`.
