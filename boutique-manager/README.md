@@ -69,6 +69,14 @@ JWT_EXPIRES_IN=7d
 MOCK_AUTH_ENABLED=true
 ```
 
+Générer `JWT_SECRET` avec une valeur réellement aléatoire, puis copier uniquement le résultat dans `.env` :
+
+```bash
+openssl rand -base64 48
+```
+
+Ne pas utiliser littéralement les placeholders de cette documentation.
+
 `MONGODB_URI` et `JWT_SECRET` restent exclusivement dans `server/.env` en local et dans les variables Vercel en ligne. Ils ne doivent jamais être copiés dans `mobile/`.
 
 ```bash
