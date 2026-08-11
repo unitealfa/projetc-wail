@@ -14,6 +14,21 @@ app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
+app.get('/', (_request, response) => {
+  response.json({
+    success: true,
+    data: {
+      status: 'ok',
+      service: 'Boutique Manager API',
+      health: '/api/health',
+    },
+  });
+});
+
+app.get('/favicon.ico', (_request, response) => {
+  response.status(204).end();
+});
+
 app.get('/api/health', (_request, response) => {
   response.json({ success: true, data: { status: 'ok' } });
 });
