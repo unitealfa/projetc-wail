@@ -1,0 +1,30 @@
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { router } from 'expo-router';
+import { shopsApi } from '@/src/api/shops.api';
+import { AppButton } from '@/src/components/AppButton';
+import { AppInput } from '@/src/components/AppInput';
+import { colors } from '@/src/constants/theme';
+import { errorMessage } from '@/src/utils/errorMessage';
+
+export default function NewShopScreen() {
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [address, setAddress] = useState('');
+  const [submitting, setSubmitting] = useState(false); const [error, setError] = useState<string>();
+  const submit = async () => {
+    const input = { name: name.trim(), phone: phone.trim(), address: address.trim() };
+    if (!input.name || !input.phone || !input.address) { setError('Tous les champs sont obligatoires.'); return; }
+    setSubmitting(true); setError(undefined);
+    try { await shopsApi.create(input); router.back(); }
+    catch (reason) { setError(errorMessage(reason)); }
+    finally { setSubmitting(false); }
+  };
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <AppInput label="Nom de la boutique *" value={name} onChangeText={setName} maxLength={120} />
+    <AppInput label="Numéro de téléphone *" value={phone} onChangeText={setPhone} keyboardType="phone-pad" maxLength={40} />
+    <AppInput label="Adresse *" value={address} onChangeText={setAddress} maxLength={250} />
+    {error ? <Text style={styles.error}>{error}</Text> : null}
+    <AppButton title="Créer" loading={submitting} onPress={() => void submit()} />
+  </ScrollView>;
+}
+
+const styles = StyleSheet.create({ container: { padding: 16, gap: 15, backgroundColor: colors.background, flexGrow: 1 }, error: { color: colors.danger, textAlign: 'center' } });
