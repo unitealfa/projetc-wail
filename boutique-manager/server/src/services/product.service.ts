@@ -11,15 +11,28 @@ import type { StoredImage } from './storage.service.js';
 
 const MAX_AI_SOURCE_IMAGE_SIZE = 10 * 1024 * 1024;
 
-async function tryUploadProductImages(shopId: string, images: Express.Multer.File[]): Promise<StoredImage[]> {
+export async function uploadRequiredProductImages(
+  shopId: string,
+  images: Express.Multer.File[],
+  upload: typeof uploadProductImage = uploadProductImage,
+  cleanup: typeof deleteProductImage = deleteProductImage,
+): Promise<StoredImage[]> {
   const stored: StoredImage[] = [];
   for (const image of images.slice(0, 2)) {
     try {
-      stored.push(await uploadProductImage(shopId, image));
+      stored.push(await upload(shopId, image));
     } catch (error) {
-      console.error("Upload Blob indisponible, une image du produit n'a pas été enregistrée.", {
-        name: error instanceof Error ? error.name : 'UnknownError',
+      await Promise.allSettled(stored.map((item) => cleanup(item.imageStorageKey)));
+      console.error("Upload Blob du produit impossible.", {
+        errorType: error instanceof Error ? error.name : 'UnknownError',
+        hasOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
+        hasStoreId: Boolean(process.env.BLOB_STORE_ID),
       });
+      throw new ApiError(
+        503,
+        "L'image n'a pas pu être enregistrée. Vérifiez que le Blob Store Vercel est connecté au projet puis réessayez.",
+        'PRODUCT_IMAGE_UPLOAD_FAILED',
+      );
     }
   }
   return stored;
@@ -70,7 +83,10 @@ export async function createProduct(
   images: Express.Multer.File[] = [],
   precomputedAnalysis?: PrecomputedProductAnalysis,
 ) {
-  const storedImages = await tryUploadProductImages(shopId, images);
+  const storedImages = await uploadRequiredProductImages(shopId, images);
+  if (images.length > 0 && storedImages.length !== images.slice(0, 2).length) {
+    throw new ApiError(503, "Toutes les images n'ont pas pu être enregistrées.", 'PRODUCT_IMAGE_UPLOAD_FAILED');
+  }
   const imageUrls = storedImages.map((image) => image.imageUrl);
   const imageStorageKeys = storedImages.map((image) => image.imageStorageKey);
   let product;
@@ -121,7 +137,10 @@ export async function updateProduct(
   if (retained.length + images.length > 2) {
     throw new ApiError(400, 'Deux images maximum par produit.', 'TOO_MANY_IMAGES');
   }
-  const storedImages = await tryUploadProductImages(shopId, images);
+  const storedImages = await uploadRequiredProductImages(shopId, images);
+  if (images.length > 0 && storedImages.length !== images.slice(0, 2).length) {
+    throw new ApiError(503, "Toutes les images n'ont pas pu être enregistrées.", 'PRODUCT_IMAGE_UPLOAD_FAILED');
+  }
   const finalUrls = [...retained.map((image) => image.url), ...storedImages.map((image) => image.imageUrl)];
   const finalKeys = [...retained.map((image) => image.key).filter((key): key is string => Boolean(key)), ...storedImages.map((image) => image.imageStorageKey)];
   const removedKeys = existingPairs

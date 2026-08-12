@@ -119,6 +119,8 @@ Dans Atlas, créer l’utilisateur DB puis autoriser l’accès réseau adapté 
 
 Dans le projet Vercel backend, ouvrir **Storage**, créer/connecter un Blob Store public puis vérifier dans l’onglet **Projects** du store que le projet utilise OIDC. Pour un ancien store, choisir **Upgrade to OIDC**. Les Functions Vercel reçoivent alors automatiquement un jeton court et renouvelé : aucun secret Blob durable n’est configuré dans ce projet.
 
+Après connexion du store, redéployer le backend et vérifier dans les variables système Vercel que `BLOB_STORE_ID` est disponible et qu’OIDC est activé pour l’environnement concerné. Ces valeurs sont gérées par Vercel : ne copiez aucune clé Blob dans l’application mobile. Si l’upload échoue, l’API refuse désormais la création avec `PRODUCT_IMAGE_UPLOAD_FAILED` au lieu de créer silencieusement un produit « Sans image ».
+
 Pour tester les opérations Blob depuis le PC, lier le dossier serveur au même projet Vercel et récupérer les variables système temporaires :
 
 ```bash
