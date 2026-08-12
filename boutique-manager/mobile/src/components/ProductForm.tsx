@@ -1,26 +1,42 @@
 import { useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import type { CustomAttribute, PickedImage, Product, ProductInput } from '../types/product';
+import { productsApi } from '../api/products.api';
+import type { CustomAttribute, PickedImage, Product, ProductAiAnalysis, ProductInput } from '../types/product';
 import { commaSeparatedValues } from '../utils/arrays';
+import { errorMessage } from '../utils/errorMessage';
 import { colors } from '../constants/theme';
 import { prepareImage } from '../utils/prepareImage';
 import { AppButton } from './AppButton';
 import { AppInput } from './AppInput';
+import { ProductImageDropZone } from './ProductImageDropZone';
 
-const PRODUCT_TYPES = ['Pantalon', 'Chaussure', 'T-shirt', 'Veste', 'Robe', 'Sac', 'Accessoire', 'Autre'];
+const PRODUCT_TYPES = [
+  'T-shirt', 'Polo', 'Chemise', 'Blouse', 'Pull', 'Cardigan', 'Sweat à capuche', 'Sweatshirt',
+  'Veste', 'Manteau', 'Blazer', 'Gilet', 'Robe', 'Jupe', 'Pantalon', 'Jean', 'Short',
+  'Legging', 'Chaussure', 'Bottes', 'Sandales', 'Talons', 'Mocassins', 'Ballerines',
+  'Sac', 'Sac à dos', 'Chapeau', 'Écharpe', 'Ceinture', 'Accessoire', 'Autre',
+];
 
 interface ProductFormProps {
+  shopId: string;
   initialProduct?: Product;
   submitting: boolean;
   submitLabel: string;
-  onSubmit: (input: ProductInput, image?: PickedImage) => Promise<void>;
+  onSubmit: (input: ProductInput, images: PickedImage[], aiAnalysis?: ProductAiAnalysis, retainedImageUrls?: string[]) => Promise<void>;
 }
 
-export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit }: ProductFormProps) {
+export function ProductForm({ shopId, initialProduct, submitting, submitLabel, onSubmit }: ProductFormProps) {
   const initialType = initialProduct?.type?.trim();
   const knownType = initialType ? (PRODUCT_TYPES.includes(initialType) ? initialType : 'Autre') : '';
-  const [image, setImage] = useState<PickedImage>();
+  const initialImageUrls = initialProduct?.imageUrls?.length
+    ? initialProduct.imageUrls
+    : (initialProduct?.imageUrl ? [initialProduct.imageUrl] : []);
+  const [images, setImages] = useState<PickedImage[]>([]);
+  const [retainedImageUrls, setRetainedImageUrls] = useState(initialImageUrls);
+  const [aiAnalysis, setAiAnalysis] = useState<ProductAiAnalysis>();
+  const [analyzing, setAnalyzing] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string>();
   const [name, setName] = useState(initialProduct?.name ?? '');
   const [selectedType, setSelectedType] = useState(knownType);
   const [otherType, setOtherType] = useState(knownType === 'Autre' ? initialType ?? '' : '');
@@ -40,7 +56,19 @@ export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit 
   const [attributes, setAttributes] = useState<CustomAttribute[]>(initialProduct?.customAttributes ?? []);
   const [error, setError] = useState<string>();
 
+  const remainingImageSlots = 2 - retainedImageUrls.length - images.length;
+
+  const addImages = (newImages: PickedImage[]) => {
+    setImages((current) => [...current, ...newImages].slice(0, 2 - retainedImageUrls.length));
+    setAiAnalysis(undefined);
+    setAiMessage(undefined);
+  };
+
   const pickImage = async (source: 'camera' | 'gallery') => {
+    if (remainingImageSlots <= 0) {
+      Alert.alert('Deux images maximum', 'Supprimez une image avant d’en ajouter une autre.');
+      return;
+    }
     const permission = source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -49,10 +77,53 @@ export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit 
       return;
     }
     const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
-    const result = await picker({ mediaTypes: ['images'], allowsEditing: true, quality: 1 });
+    const multiple = source === 'gallery' && remainingImageSlots > 1;
+    const result = await picker({
+      mediaTypes: ['images'],
+      allowsEditing: !multiple,
+      allowsMultipleSelection: multiple,
+      selectionLimit: remainingImageSlots,
+      quality: 1,
+    });
     if (result.canceled) return;
-    try { setImage(await prepareImage(result.assets[0], 'produit')); }
+    try {
+      const prepared = await Promise.all(
+        result.assets.slice(0, remainingImageSlots).map((asset, index) => prepareImage(asset, `produit-${images.length + index + 1}`)),
+      );
+      addImages(prepared);
+    }
     catch { Alert.alert('Image invalide', 'Impossible de préparer cette image.'); }
+  };
+
+  const autofill = async () => {
+    if (images.length === 0) {
+      setError('Ajoutez une ou deux nouvelles images à analyser.');
+      return;
+    }
+    setAnalyzing(true); setError(undefined); setAiMessage(undefined);
+    try {
+      const result = await productsApi.autofill(shopId, images);
+      const suggestions = result.suggestions;
+      if (suggestions.name) setName(suggestions.name);
+      if (suggestions.type) {
+        if (PRODUCT_TYPES.includes(suggestions.type)) { setSelectedType(suggestions.type); setOtherType(''); }
+        else { setSelectedType('Autre'); setOtherType(suggestions.type); }
+      }
+      if (suggestions.brand) setBrand(suggestions.brand);
+      if (suggestions.model) setModel(suggestions.model);
+      if (suggestions.colors.length) setColorsText(suggestions.colors.join(', '));
+      if (suggestions.material) setMaterial(suggestions.material);
+      if (suggestions.description) setDescription(suggestions.description);
+      if (suggestions.customAttributes.length) {
+        setAttributes((current) => {
+          const suggestedKeys = new Set(suggestions.customAttributes.map((item) => item.key.toLowerCase()));
+          return [...current.filter((item) => !suggestedKeys.has(item.key.toLowerCase())), ...suggestions.customAttributes];
+        });
+      }
+      setAiAnalysis(result.analysis);
+      setAiMessage('Champs visibles remplis par l’IA. Vérifiez-les avant de créer le produit.');
+    } catch (reason) { setError(errorMessage(reason)); }
+    finally { setAnalyzing(false); }
   };
 
   const updateAttribute = (index: number, field: keyof CustomAttribute, value: string) => {
@@ -94,22 +165,35 @@ export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit 
       sku: optional(sku), barcode: optional(barcode), colors: colorValues, sizes: commaSeparatedValues(sizesText),
       material: optional(material), targetAudience: optional(targetAudience), description: optional(description),
       price: numericPrice, currency: optional(currency), stock: numericStock, customAttributes: cleanAttributes,
-    }, image);
+    }, images, aiAnalysis, retainedImageUrls);
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Section title="IMAGE">
-        {image?.uri || initialProduct?.imageUrl ? (
-          <Image source={{ uri: image?.uri ?? initialProduct?.imageUrl }} style={styles.preview} resizeMode="cover" />
+        {retainedImageUrls.length || images.length ? (
+          <View style={styles.previews}>
+            {retainedImageUrls.map((uri) => <View key={uri} style={styles.previewItem}>
+              <Image source={{ uri }} style={styles.preview} resizeMode="cover" />
+              <AppButton title="Retirer" variant="danger" disabled={submitting || analyzing} onPress={() => setRetainedImageUrls((current) => current.filter((item) => item !== uri))} />
+            </View>)}
+            {images.map((item, index) => <View key={item.uri} style={styles.previewItem}>
+              <Image source={{ uri: item.uri }} style={styles.preview} resizeMode="cover" />
+              <AppButton title="Retirer" variant="danger" disabled={submitting || analyzing} onPress={() => { setImages((current) => current.filter((_, itemIndex) => itemIndex !== index)); setAiAnalysis(undefined); setAiMessage(undefined); }} />
+            </View>)}
+          </View>
         ) : (
           <View style={[styles.preview, styles.previewPlaceholder]}><Text style={styles.hint}>Aucune image</Text></View>
         )}
         <View style={styles.imageActions}>
-          <View style={styles.imageAction}><AppButton title="Caméra" disabled={submitting} onPress={() => void pickImage('camera')} /></View>
-          <View style={styles.imageAction}><AppButton title="Galerie" variant="secondary" disabled={submitting} onPress={() => void pickImage('gallery')} /></View>
+          <View style={styles.imageAction}><AppButton title="Prendre une photo" disabled={submitting || analyzing || remainingImageSlots <= 0} onPress={() => void pickImage('camera')} /></View>
+          <View style={styles.imageAction}><AppButton title="Choisir des images" variant="secondary" disabled={submitting || analyzing || remainingImageSlots <= 0} onPress={() => void pickImage('gallery')} /></View>
         </View>
-        <Text style={styles.hint}>Facultatif · recadrage puis compression JPEG automatique</Text>
+        <ProductImageDropZone disabled={submitting || analyzing} remaining={remainingImageSlots} onImages={addImages} />
+        <Text style={styles.hint}>1 ou 2 images maximum · recadrage puis compression JPEG automatique</Text>
+        <AppButton title="Remplir automatiquement avec l’IA" loading={analyzing} disabled={submitting || images.length === 0} onPress={() => void autofill()} />
+        <Text style={styles.hint}>L’IA remplit uniquement ce qu’elle voit. Prix, stock, tailles, SKU et code-barres restent à saisir manuellement.</Text>
+        {aiMessage ? <Text style={styles.aiSuccess}>{aiMessage}</Text> : null}
       </Section>
 
       <Section title="IDENTIFICATION">
@@ -170,7 +254,9 @@ const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 40, gap: 18, backgroundColor: colors.background },
   section: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 15, gap: 12 },
   sectionTitle: { color: colors.primary, fontSize: 14, fontWeight: '900', letterSpacing: 0.7 },
-  preview: { width: '100%', height: 220, borderRadius: 10, backgroundColor: '#E2E8F0' },
+  previews: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  previewItem: { flexBasis: '47%', flexGrow: 1, gap: 6 },
+  preview: { width: '100%', height: 190, borderRadius: 10, backgroundColor: '#E2E8F0' },
   previewPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   hint: { color: colors.muted, fontSize: 12, textAlign: 'center' },
   imageActions: { flexDirection: 'row', gap: 10 },
@@ -183,4 +269,5 @@ const styles = StyleSheet.create({
   typeTextSelected: { color: '#FFFFFF', fontWeight: '700' },
   attribute: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12, gap: 10 },
   error: { color: colors.danger, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  aiSuccess: { color: colors.success, fontSize: 13, fontWeight: '800', textAlign: 'center' },
 });

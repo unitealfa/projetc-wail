@@ -26,6 +26,7 @@ function publicProduct(match: ReturnType<typeof findMatchingProducts>[number]) {
       price: product.price ?? null,
       currency: product.currency ?? null,
       imageUrl: product.imageUrl ?? null,
+      imageUrls: product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []),
     },
     shop: {
       id: match.shop.id ?? String(match.shop._id ?? ''),

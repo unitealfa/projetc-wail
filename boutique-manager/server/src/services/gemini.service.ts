@@ -17,7 +17,7 @@ export type GeminiGenerator = (
 
 interface GenerateStructuredOptions<T> {
   prompt: string;
-  image: { buffer: Buffer; mimeType: string };
+  images: Array<{ buffer: Buffer; mimeType: string }>;
   jsonSchema: unknown;
   validate: (value: unknown) => T;
   generator?: GeminiGenerator;
@@ -88,7 +88,9 @@ export async function generateStructuredGemini<T>(
           role: 'user',
           parts: [
             { text: options.prompt },
-            { inlineData: { data: options.image.buffer.toString('base64'), mimeType: options.image.mimeType } },
+            ...options.images.map((image) => ({
+              inlineData: { data: image.buffer.toString('base64'), mimeType: image.mimeType },
+            })),
           ],
         }],
         config: {

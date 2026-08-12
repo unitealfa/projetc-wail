@@ -14,9 +14,18 @@ function imageFilter(_request: Express.Request, file: Express.Multer.File, callb
 
 export const productImageUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_PRODUCT_IMAGE_SIZE, files: 1 },
+  limits: { fileSize: MAX_PRODUCT_IMAGE_SIZE, files: 2 },
   fileFilter: imageFilter,
-}).single('image');
+}).fields([
+  { name: 'images', maxCount: 2 },
+  { name: 'image', maxCount: 1 },
+]);
+
+export const productAutofillImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_PRODUCT_IMAGE_SIZE, files: 2 },
+  fileFilter: imageFilter,
+}).array('images', 2);
 
 export const searchImageUpload = multer({
   storage: multer.memoryStorage(),

@@ -45,7 +45,7 @@ export async function deleteShopCascade(shopId: string): Promise<void> {
     throw new ApiError(404, 'Boutique introuvable.', 'SHOP_NOT_FOUND');
   }
 
-  const products = await Product.find({ shopId }).select('imageStorageKey').lean();
+  const products = await Product.find({ shopId }).select('imageStorageKey imageStorageKeys').lean();
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
@@ -60,17 +60,19 @@ export async function deleteShopCascade(shopId: string): Promise<void> {
     await session.endSession();
   }
 
-  const storedProducts = products.filter(
-    (product): product is typeof product & { imageStorageKey: string } => Boolean(product.imageStorageKey),
-  );
+  const storageKeys = [...new Set(products.flatMap((product) =>
+    product.imageStorageKeys?.length
+      ? product.imageStorageKeys
+      : (product.imageStorageKey ? [product.imageStorageKey] : []),
+  ))];
   const results = await Promise.allSettled(
-    storedProducts.map((product) => deleteProductImage(product.imageStorageKey)),
+    storageKeys.map(deleteProductImage),
   );
   results.forEach((result, index) => {
     if (result.status === 'rejected') {
       console.error('Suppression Blob échouée après suppression boutique.', {
         shopId,
-        storageKey: storedProducts[index]?.imageStorageKey,
+        storageKey: storageKeys[index],
         reason: result.reason instanceof Error ? result.reason.message : 'Erreur inconnue',
       });
     }

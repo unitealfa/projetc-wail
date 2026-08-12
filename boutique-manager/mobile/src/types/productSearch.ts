@@ -27,6 +27,7 @@ export interface SearchMatch {
     price: number | null;
     currency: string | null;
     imageUrl: string | null;
+    imageUrls: string[];
   };
   shop: {
     id: string;

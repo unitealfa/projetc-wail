@@ -10,6 +10,9 @@ const LABELS = {
 } as const;
 
 export function SearchResultCard({ match, requestedSize }: { match: SearchMatch; requestedSize?: string }) {
+  const imageUrls = match.product.imageUrls?.length
+    ? match.product.imageUrls
+    : (match.product.imageUrl ? [match.product.imageUrl] : []);
   const price = match.product.price === null
     ? null
     : `${new Intl.NumberFormat('fr-FR').format(match.product.price)} ${match.product.currency ?? 'DZD'}`;
@@ -19,7 +22,7 @@ export function SearchResultCard({ match, requestedSize }: { match: SearchMatch;
       ? `Taille ${requestedSize} non déclarée`
       : null;
   return <View style={styles.card}>
-    {match.product.imageUrl ? <Image source={{ uri: match.product.imageUrl }} style={styles.image} resizeMode="cover" /> : null}
+    {imageUrls.length ? <View style={styles.images}>{imageUrls.map((uri) => <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />)}</View> : null}
     <View style={styles.content}>
       <Text style={styles.label}>{LABELS[match.confidenceLabel]} · {match.score}%</Text>
       <Text style={styles.name}>{match.product.name}</Text>
@@ -41,7 +44,8 @@ export function SearchResultCard({ match, requestedSize }: { match: SearchMatch;
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, overflow: 'hidden' },
-  image: { width: '100%', height: 210, backgroundColor: '#E2E8F0' },
+  images: { flexDirection: 'row', gap: 2 },
+  image: { flex: 1, minWidth: 0, height: 210, backgroundColor: '#E2E8F0' },
   content: { padding: 15, gap: 6 },
   label: { color: colors.success, fontSize: 13, fontWeight: '900' },
   name: { color: colors.text, fontSize: 20, fontWeight: '900' },

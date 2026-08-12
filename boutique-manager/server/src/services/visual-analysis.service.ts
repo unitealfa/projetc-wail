@@ -18,9 +18,16 @@ export async function analyzeProductImage(
   mimeType: string,
   options: AnalyzeOptions = {},
 ): Promise<{ profile: VisualProductProfile; model: string }> {
+  return analyzeProductImages([{ buffer, mimeType }], options);
+}
+
+export async function analyzeProductImages(
+  images: Array<{ buffer: Buffer; mimeType: string }>,
+  options: AnalyzeOptions = {},
+): Promise<{ profile: VisualProductProfile; model: string }> {
   const result = await generateStructuredGemini({
-    prompt: PRODUCT_VISION_PROMPT,
-    image: { buffer, mimeType },
+    prompt: `${PRODUCT_VISION_PROMPT}\n\nLes images fournies montrent le même produit sous un ou deux angles. Fusionne uniquement les informations cohérentes observées sur l'ensemble des images en un seul profil.`,
+    images,
     jsonSchema: visualProductProfileJsonSchema,
     validate: (value) => visualProductProfileSchema.parse(value),
     ...options,

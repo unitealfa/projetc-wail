@@ -2,29 +2,38 @@ import type { Types } from 'mongoose';
 import { AI_ANALYSIS_STATUS } from '../constants/ai-analysis.js';
 import { Product } from '../models/Product.js';
 import type { CreateProductInput, UpdateProductInput } from '../schemas/product.schema.js';
+import type { PrecomputedProductAnalysis } from '../schemas/product-autofill.schema.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createProductCode } from '../utils/productCode.js';
 import { deleteProductImage, uploadProductImage } from './storage.service.js';
-import { analyzeProductImage } from './visual-analysis.service.js';
+import { analyzeProductImages } from './visual-analysis.service.js';
+import type { StoredImage } from './storage.service.js';
 
 const MAX_AI_SOURCE_IMAGE_SIZE = 10 * 1024 * 1024;
 
-async function tryUploadProductImage(shopId: string, image?: Express.Multer.File) {
-  if (!image) return null;
-
-  try {
-    return await uploadProductImage(shopId, image);
-  } catch (error) {
-    console.error("Upload Blob indisponible, le produit sera enregistré sans image.", {
-      name: error instanceof Error ? error.name : 'UnknownError',
-    });
-    return null;
+async function tryUploadProductImages(shopId: string, images: Express.Multer.File[]): Promise<StoredImage[]> {
+  const stored: StoredImage[] = [];
+  for (const image of images.slice(0, 2)) {
+    try {
+      stored.push(await uploadProductImage(shopId, image));
+    } catch (error) {
+      console.error("Upload Blob indisponible, une image du produit n'a pas été enregistrée.", {
+        name: error instanceof Error ? error.name : 'UnknownError',
+      });
+    }
   }
+  return stored;
 }
 
-async function analyzeStoredCatalogImage(productId: string, image: Express.Multer.File): Promise<void> {
+async function analyzeStoredCatalogImages(
+  productId: string,
+  images: Express.Multer.File[],
+  precomputed?: PrecomputedProductAnalysis,
+): Promise<void> {
   try {
-    const result = await analyzeProductImage(image.buffer, image.mimetype);
+    const result = precomputed ?? await analyzeProductImages(
+      images.map((image) => ({ buffer: image.buffer, mimeType: image.mimetype })),
+    );
     await Product.updateOne(
       { _id: productId },
       {
@@ -58,34 +67,31 @@ export async function createProduct(
   shopId: string,
   userId: Types.ObjectId,
   input: CreateProductInput,
-  image?: Express.Multer.File,
+  images: Express.Multer.File[] = [],
+  precomputedAnalysis?: PrecomputedProductAnalysis,
 ) {
-  const storedImage = await tryUploadProductImage(shopId, image);
+  const storedImages = await tryUploadProductImages(shopId, images);
+  const imageUrls = storedImages.map((image) => image.imageUrl);
+  const imageStorageKeys = storedImages.map((image) => image.imageStorageKey);
   let product;
   try {
     product = await Product.create({
       ...input,
       shopId,
-      ...(storedImage ?? {}),
-      aiAnalysisStatus: storedImage ? AI_ANALYSIS_STATUS.PENDING : null,
+      imageUrl: imageUrls[0],
+      imageStorageKey: imageStorageKeys[0],
+      imageUrls,
+      imageStorageKeys,
+      aiAnalysisStatus: images.length ? AI_ANALYSIS_STATUS.PENDING : null,
       internalCode: createProductCode(),
       createdBy: userId,
       updatedBy: userId,
     });
   } catch (error) {
-    if (storedImage) {
-      try {
-        await deleteProductImage(storedImage.imageStorageKey);
-      } catch (cleanupError) {
-        console.error('Nettoyage du nouveau Blob échoué après erreur MongoDB.', {
-          storageKey: storedImage.imageStorageKey,
-          reason: cleanupError instanceof Error ? cleanupError.message : 'Erreur inconnue',
-        });
-      }
-    }
+    await Promise.allSettled(imageStorageKeys.map(deleteProductImage));
     throw error;
   }
-  if (storedImage && image) await analyzeStoredCatalogImage(String(product._id), image);
+  if (images.length) await analyzeStoredCatalogImages(String(product._id), images, precomputedAnalysis);
   try {
     return (await Product.findById(product._id)) ?? product;
   } catch {
@@ -98,64 +104,75 @@ export async function updateProduct(
   productId: string,
   userId: Types.ObjectId,
   input: UpdateProductInput,
-  image?: Express.Multer.File,
+  images: Express.Multer.File[] = [],
+  precomputedAnalysis?: PrecomputedProductAnalysis,
+  retainedImageUrls?: string[],
 ) {
   const existing = await Product.findOne({ _id: productId, shopId });
   if (!existing) {
     throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
   }
 
-  const newImage = await tryUploadProductImage(shopId, image);
-  const oldStorageKey = existing.imageStorageKey;
+  const existingUrls: string[] = existing.imageUrls.length ? existing.imageUrls : (existing.imageUrl ? [existing.imageUrl] : []);
+  const existingKeys: string[] = existing.imageStorageKeys.length ? existing.imageStorageKeys : (existing.imageStorageKey ? [existing.imageStorageKey] : []);
+  const existingPairs = existingUrls.map((url, index) => ({ url, key: existingKeys[index] }));
+  const retainedSet = retainedImageUrls ? new Set(retainedImageUrls) : null;
+  const retained = retainedSet ? existingPairs.filter((image) => retainedSet.has(image.url)) : existingPairs;
+  if (retained.length + images.length > 2) {
+    throw new ApiError(400, 'Deux images maximum par produit.', 'TOO_MANY_IMAGES');
+  }
+  const storedImages = await tryUploadProductImages(shopId, images);
+  const finalUrls = [...retained.map((image) => image.url), ...storedImages.map((image) => image.imageUrl)];
+  const finalKeys = [...retained.map((image) => image.key).filter((key): key is string => Boolean(key)), ...storedImages.map((image) => image.imageStorageKey)];
+  const removedKeys = existingPairs
+    .filter((image) => !retained.some((kept) => kept.url === image.url))
+    .map((image) => image.key)
+    .filter((key): key is string => Boolean(key));
 
   let updated;
   try {
+    const updateFields = {
+      ...input,
+      imageUrls: finalUrls,
+      imageStorageKeys: finalKeys,
+      ...(finalUrls[0] ? { imageUrl: finalUrls[0] } : {}),
+      ...(finalKeys[0] ? { imageStorageKey: finalKeys[0] } : {}),
+      ...(images.length ? {
+        aiVisualProfile: null,
+        aiAnalysisStatus: AI_ANALYSIS_STATUS.PENDING,
+        aiAnalysisModel: null,
+        aiAnalyzedAt: null,
+      } : finalUrls.length === 0 ? {
+        aiVisualProfile: null,
+        aiAnalysisStatus: null,
+        aiAnalysisModel: null,
+        aiAnalyzedAt: null,
+      } : {}),
+      updatedBy: userId,
+    };
     updated = await Product.findOneAndUpdate(
       { _id: productId, shopId },
       {
-        ...input,
-        ...(newImage ?? {}),
-        ...(newImage ? {
-          aiVisualProfile: null,
-          aiAnalysisStatus: AI_ANALYSIS_STATUS.PENDING,
-          aiAnalysisModel: null,
-          aiAnalyzedAt: null,
+        $set: updateFields,
+        ...(!finalUrls[0] || !finalKeys[0] ? {
+          $unset: {
+            ...(!finalUrls[0] ? { imageUrl: 1 } : {}),
+            ...(!finalKeys[0] ? { imageStorageKey: 1 } : {}),
+          },
         } : {}),
-        updatedBy: userId,
       },
       { new: true, runValidators: true },
     );
   } catch (error) {
-    if (newImage) {
-      try {
-        await deleteProductImage(newImage.imageStorageKey);
-      } catch (cleanupError) {
-        console.error('Nettoyage du nouveau Blob échoué après erreur MongoDB.', {
-          storageKey: newImage.imageStorageKey,
-          reason: cleanupError instanceof Error ? cleanupError.message : 'Erreur inconnue',
-        });
-      }
-    }
+    await Promise.allSettled(storedImages.map((image) => deleteProductImage(image.imageStorageKey)));
     throw error;
   }
   if (!updated) {
-    if (newImage) {
-      try { await deleteProductImage(newImage.imageStorageKey); } catch { /* compensation déjà tentée au mieux */ }
-    }
+    await Promise.allSettled(storedImages.map((image) => deleteProductImage(image.imageStorageKey)));
     throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
   }
-  if (newImage && oldStorageKey) {
-    try {
-      await deleteProductImage(oldStorageKey);
-    } catch (error) {
-      console.error("Suppression de l'ancien Blob échouée après mise à jour produit.", {
-        productId,
-        storageKey: oldStorageKey,
-        reason: error instanceof Error ? error.message : 'Erreur inconnue',
-      });
-    }
-  }
-  if (newImage && image) await analyzeStoredCatalogImage(productId, image);
+  await Promise.allSettled(removedKeys.map(deleteProductImage));
+  if (images.length) await analyzeStoredCatalogImages(productId, images, precomputedAnalysis);
   try {
     return (await Product.findById(productId)) ?? updated;
   } catch {
@@ -202,13 +219,14 @@ export async function retryProductAnalysis(
 ) {
   const product = await Product.findOne({ _id: productId, shopId });
   if (!product) throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
-  if (!product.imageUrl) throw new ApiError(400, "Ce produit n'a pas d'image à analyser.", 'PRODUCT_IMAGE_REQUIRED');
+  const imageUrls = product.imageUrls.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []);
+  if (!imageUrls.length) throw new ApiError(400, "Ce produit n'a pas d'image à analyser.", 'PRODUCT_IMAGE_REQUIRED');
   product.aiAnalysisStatus = AI_ANALYSIS_STATUS.PENDING;
   product.updatedBy = userId;
   await product.save();
   try {
-    const image = await downloadCatalogImage(product.imageUrl);
-    const result = await analyzeProductImage(image.buffer, image.mimeType);
+    const images = await Promise.all(imageUrls.slice(0, 2).map(downloadCatalogImage));
+    const result = await analyzeProductImages(images);
     product.aiVisualProfile = result.profile;
     product.aiAnalysisStatus = AI_ANALYSIS_STATUS.READY;
     product.aiAnalysisModel = result.model;
@@ -231,15 +249,11 @@ export async function deleteProduct(shopId: string, productId: string): Promise<
     throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
   }
   await product.deleteOne();
-  if (product.imageStorageKey) {
-    try {
-      await deleteProductImage(product.imageStorageKey);
-    } catch (error) {
-      console.error('Suppression Blob échouée après suppression produit.', {
-        productId,
-        storageKey: product.imageStorageKey,
-        reason: error instanceof Error ? error.message : 'Erreur inconnue',
-      });
-    }
+  const storageKeys: string[] = product.imageStorageKeys.length
+    ? product.imageStorageKeys
+    : (product.imageStorageKey ? [product.imageStorageKey] : []);
+  const results = await Promise.allSettled([...new Set(storageKeys)].map(deleteProductImage));
+  if (results.some((result) => result.status === 'rejected')) {
+    console.error('Suppression de certaines images Blob échouée après suppression produit.', { productId });
   }
 }

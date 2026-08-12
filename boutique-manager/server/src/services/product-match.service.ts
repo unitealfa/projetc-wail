@@ -31,6 +31,7 @@ export interface MatchableProduct {
   price?: number;
   currency?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   aiVisualProfile?: VisualProductProfile | null;
   shopId: MatchableShop;
 }

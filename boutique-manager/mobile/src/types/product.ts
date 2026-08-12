@@ -28,11 +28,29 @@ export interface Product extends ProductInput {
   internalCode: string;
   imageUrl?: string;
   imageStorageKey?: string;
+  imageUrls?: string[];
+  imageStorageKeys?: string[];
   aiAnalysisStatus?: 'PENDING' | 'READY' | 'FAILED' | null;
   aiAnalysisModel?: string | null;
   aiAnalyzedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductAiAnalysis {
+  profile: Record<string, unknown>;
+  model: string;
+}
+
+export interface ProductAutofillSuggestions {
+  name?: string;
+  type?: string;
+  brand?: string;
+  model?: string;
+  colors: string[];
+  material?: string;
+  description?: string;
+  customAttributes: CustomAttribute[];
 }
 
 export interface PickedImage {

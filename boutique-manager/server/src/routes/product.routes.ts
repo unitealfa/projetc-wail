@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createProduct,
+  autofillProductFromImages,
   deleteProduct,
   getProduct,
   listProducts,
@@ -9,11 +10,12 @@ import {
 } from '../controllers/product.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireShopAccess } from '../middleware/role.middleware.js';
-import { productImageUpload } from '../middleware/upload.middleware.js';
+import { productAutofillImageUpload, productImageUpload } from '../middleware/upload.middleware.js';
 
 export const productRouter = Router({ mergeParams: true });
 productRouter.use(requireAuth, requireShopAccess);
 productRouter.get('/', listProducts);
+productRouter.post('/autofill', productAutofillImageUpload, autofillProductFromImages);
 productRouter.post('/', productImageUpload, createProduct);
 productRouter.get('/:productId', getProduct);
 productRouter.post('/:productId/retry-analysis', retryProductAnalysis);

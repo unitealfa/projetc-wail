@@ -4,10 +4,13 @@ import { colors } from '../constants/theme';
 import { AppButton } from './AppButton';
 
 export function ProductCard({ product, busy, onEdit, onDelete, onRetryAnalysis }: { product: Product; busy: boolean; onEdit: () => void; onDelete: () => void; onRetryAnalysis: () => void }) {
+  const imageUrls = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []);
   return (
     <View style={styles.card}>
-      {product.imageUrl ? (
-        <Image source={{ uri: product.imageUrl }} style={styles.image} resizeMode="cover" />
+      {imageUrls.length ? (
+        <View style={styles.images}>
+          {imageUrls.map((uri) => <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />)}
+        </View>
       ) : (
         <View style={[styles.image, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Sans image</Text></View>
       )}
@@ -31,8 +34,9 @@ export function ProductCard({ product, busy, onEdit, onDelete, onRetryAnalysis }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  image: { width: '100%', height: 190, backgroundColor: '#E2E8F0' },
-  imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  images: { flexDirection: 'row', gap: 2 },
+  image: { flex: 1, minWidth: 0, height: 190, backgroundColor: '#E2E8F0' },
+  imagePlaceholder: { width: '100%', alignItems: 'center', justifyContent: 'center' },
   imagePlaceholderText: { color: colors.muted, fontSize: 15, fontWeight: '600' },
   content: { padding: 14, gap: 5 },
   name: { color: colors.text, fontSize: 19, fontWeight: '800' },

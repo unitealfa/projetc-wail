@@ -23,6 +23,8 @@ Expo / React Native (téléphones)
 - CRUD produit identique côté ADMIN et BOUTIQUE, avec contrôle cross-shop;
 - formulaire produit partagé où seuls le nom et une couleur sont obligatoires pendant les tests;
 - caméra/galerie, recadrage et compression JPEG (dimension maximale proche de 1600 px, qualité 0,8);
+- jusqu’à deux images par produit, avec ajout par caméra, galerie ou glisser-déposer sur le web;
+- bouton **Remplir automatiquement avec l’IA** dans le formulaire partagé ADMIN/BOUTIQUE : il complète les champs visuellement observables et laisse prix, stock, tailles, SKU et code-barres vides;
 - upload Vercel Blob en mémoire, compensation des uploads échoués et remplacement sûr des images;
 - analyse Gemini structurée des images catalogue, état visible et relance manuelle sans bloquer le CRUD en cas d’échec IA;
 - recherche USER par photo, matching déterministe côté serveur, taille facultative et classement géographique après filtrage des bons candidats;
@@ -207,6 +209,7 @@ Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones co
 1. Se déconnecter puis choisir **Boutique**. Avec une boutique, la connexion est directe; avec plusieurs, une liste est affichée.
 2. Ouvrir **Produits**, puis **+ Ajouter un produit**.
 3. Renseigner au minimum le nom et une couleur. L’image (moins de 3 Mio), le type, la marque et les autres informations sont facultatifs pendant la phase de test.
+   Pour aller plus vite, ajouter une ou deux photos puis utiliser **Remplir automatiquement avec l’IA**. Vérifier les propositions avant l’enregistrement.
 4. Créer, modifier le stock/couleurs, puis éventuellement remplacer l’image.
 5. Se reconnecter ADMIN, ouvrir Users → Nike Alger → **Gérer les produits** et vérifier qu’il s’agit du même document.
 6. Tester avec un token d’une autre boutique : toutes les routes `/api/shops/{AUTRE_SHOP}/products` doivent répondre `403`.

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { productsApi } from '../api/products.api';
-import type { PickedImage, Product, ProductInput } from '../types/product';
+import type { PickedImage, Product, ProductAiAnalysis, ProductInput } from '../types/product';
 import { errorMessage } from '../utils/errorMessage';
 import { colors } from '../constants/theme';
 import { ErrorState } from './ErrorState';
@@ -21,18 +21,18 @@ export function ProductEditorScreen({ shopId, productId }: { shopId: string; pro
   }, [shopId, productId]);
   useEffect(() => { void load(); }, [load]);
 
-  const submit = async (input: ProductInput, image?: PickedImage) => {
+  const submit = async (input: ProductInput, images: PickedImage[], aiAnalysis?: ProductAiAnalysis, retainedImageUrls?: string[]) => {
     setSubmitting(true); setError(undefined);
     try {
-      if (productId) await productsApi.update(shopId, productId, input, image);
-      else await productsApi.create(shopId, input, image);
+      if (productId) await productsApi.update(shopId, productId, input, images, aiAnalysis, retainedImageUrls);
+      else await productsApi.create(shopId, input, images, aiAnalysis);
       router.back();
     } catch (reason) { setError(errorMessage(reason)); }
     finally { setSubmitting(false); }
   };
   if (loading) return <LoadingState />;
   if (error && productId && !product) return <ErrorState message={error} onRetry={() => void load()} />;
-  return <>{error ? <Text style={styles.error}>{error}</Text> : null}<ProductForm initialProduct={product} submitting={submitting} submitLabel={productId ? 'Enregistrer les modifications' : 'Créer le produit'} onSubmit={submit} /></>;
+  return <>{error ? <Text style={styles.error}>{error}</Text> : null}<ProductForm shopId={shopId} initialProduct={product} submitting={submitting} submitLabel={productId ? 'Enregistrer les modifications' : 'Créer le produit'} onSubmit={submit} /></>;
 }
 
 const styles = StyleSheet.create({ error: { color: colors.danger, padding: 12, textAlign: 'center', backgroundColor: colors.dangerLight } });

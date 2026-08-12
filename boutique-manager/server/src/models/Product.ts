@@ -27,6 +27,8 @@ export interface IProduct {
   stock?: number;
   imageUrl?: string;
   imageStorageKey?: string;
+  imageUrls: string[];
+  imageStorageKeys: string[];
   aiVisualProfile?: VisualProductProfile | null;
   aiAnalysisStatus?: AiAnalysisStatus | null;
   aiAnalysisModel?: string | null;
@@ -69,6 +71,8 @@ const productSchema = new Schema<IProduct>(
     stock: { type: Number, min: 0 },
     imageUrl: { type: String },
     imageStorageKey: { type: String },
+    imageUrls: { type: [String], default: [], validate: [(values: string[]) => values.length <= 2, 'Deux images maximum.'] },
+    imageStorageKeys: { type: [String], default: [], validate: [(values: string[]) => values.length <= 2, 'Deux images maximum.'] },
     aiVisualProfile: { type: Schema.Types.Mixed, default: null },
     aiAnalysisStatus: { type: String, enum: Object.values(AI_ANALYSIS_STATUS), default: null },
     aiAnalysisModel: { type: String, default: null },

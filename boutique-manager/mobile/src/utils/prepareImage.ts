@@ -1,5 +1,6 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
+import { Image } from 'react-native';
 import type { PickedImage } from '../types/product';
 
 const MAX_DIMENSION = 1600;
@@ -17,4 +18,11 @@ export async function prepareImage(asset: ImagePickerAsset, prefix = 'image'): P
     fileName: `${prefix}-${Date.now()}.jpg`,
     mimeType: 'image/jpeg',
   };
+}
+
+export async function prepareImageUri(uri: string, prefix = 'image'): Promise<PickedImage> {
+  const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+  return prepareImage({ uri, ...dimensions } as ImagePickerAsset, prefix);
 }

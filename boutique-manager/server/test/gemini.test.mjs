@@ -11,7 +11,7 @@ const { generateStructuredGemini } = await import('../dist/src/services/gemini.s
 
 const base = {
   prompt: 'test',
-  image: { buffer: Buffer.from('image'), mimeType: 'image/jpeg' },
+  images: [{ buffer: Buffer.from('image'), mimeType: 'image/jpeg' }],
   jsonSchema: { type: 'object' },
   validate: (value) => value,
   primaryModel: 'primary',
