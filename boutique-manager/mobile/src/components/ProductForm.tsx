@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { productsApi } from '../api/products.api';
@@ -33,6 +33,7 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
     ? initialProduct.imageUrls
     : (initialProduct?.imageUrl ? [initialProduct.imageUrl] : []);
   const [images, setImages] = useState<PickedImage[]>([]);
+  const imagesRef = useRef<PickedImage[]>([]);
   const [retainedImageUrls, setRetainedImageUrls] = useState(initialImageUrls);
   const [aiAnalysis, setAiAnalysis] = useState<ProductAiAnalysis>();
   const [analyzing, setAnalyzing] = useState(false);
@@ -59,7 +60,11 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
   const remainingImageSlots = 2 - retainedImageUrls.length - images.length;
 
   const addImages = (newImages: PickedImage[]) => {
-    setImages((current) => [...current, ...newImages].slice(0, 2 - retainedImageUrls.length));
+    setImages((current) => {
+      const next = [...current, ...newImages].slice(0, 2 - retainedImageUrls.length);
+      imagesRef.current = next;
+      return next;
+    });
     setAiAnalysis(undefined);
     setAiMessage(undefined);
   };
@@ -96,13 +101,14 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
   };
 
   const autofill = async () => {
-    if (images.length === 0) {
+    const imagesToKeep = [...imagesRef.current];
+    if (imagesToKeep.length === 0) {
       setError('Ajoutez une ou deux nouvelles images à analyser.');
       return;
     }
     setAnalyzing(true); setError(undefined); setAiMessage(undefined);
     try {
-      const result = await productsApi.autofill(shopId, images);
+      const result = await productsApi.autofill(shopId, imagesToKeep);
       const suggestions = result.suggestions;
       if (suggestions.name) setName(suggestions.name);
       if (suggestions.type) {
@@ -121,7 +127,11 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
         });
       }
       setAiAnalysis(result.analysis);
-      setAiMessage('Champs visibles remplis par l’IA. Vérifiez-les avant de créer le produit.');
+      // L'analyse ne doit jamais consommer ni remplacer les fichiers locaux :
+      // ils seront réutilisés lors de la création effective du produit.
+      imagesRef.current = imagesToKeep;
+      setImages(imagesToKeep);
+      setAiMessage(`${imagesToKeep.length} image${imagesToKeep.length > 1 ? 's' : ''} conservée${imagesToKeep.length > 1 ? 's' : ''} · champs visibles remplis par l’IA. Vérifiez-les avant de créer le produit.`);
     } catch (reason) { setError(errorMessage(reason)); }
     finally { setAnalyzing(false); }
   };
@@ -165,7 +175,7 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
       sku: optional(sku), barcode: optional(barcode), colors: colorValues, sizes: commaSeparatedValues(sizesText),
       material: optional(material), targetAudience: optional(targetAudience), description: optional(description),
       price: numericPrice, currency: optional(currency), stock: numericStock, customAttributes: cleanAttributes,
-    }, images, aiAnalysis, retainedImageUrls);
+    }, [...imagesRef.current], aiAnalysis, retainedImageUrls);
   };
 
   return (
@@ -179,7 +189,15 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
             </View>)}
             {images.map((item, index) => <View key={item.uri} style={styles.previewItem}>
               <Image source={{ uri: item.uri }} style={styles.preview} resizeMode="cover" />
-              <AppButton title="Retirer" variant="danger" disabled={submitting || analyzing} onPress={() => { setImages((current) => current.filter((_, itemIndex) => itemIndex !== index)); setAiAnalysis(undefined); setAiMessage(undefined); }} />
+              <AppButton title="Retirer" variant="danger" disabled={submitting || analyzing} onPress={() => {
+                setImages((current) => {
+                  const next = current.filter((_, itemIndex) => itemIndex !== index);
+                  imagesRef.current = next;
+                  return next;
+                });
+                setAiAnalysis(undefined);
+                setAiMessage(undefined);
+              }} />
             </View>)}
           </View>
         ) : (
