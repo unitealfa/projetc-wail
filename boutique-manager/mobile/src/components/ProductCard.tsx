@@ -2,6 +2,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import type { Product } from '../types/product';
 import { colors } from '../constants/theme';
 import { AppButton } from './AppButton';
+import { resolveApiUrl } from '../api/client';
 
 export function ProductCard({ product, busy, onEdit, onDelete, onRetryAnalysis }: { product: Product; busy: boolean; onEdit: () => void; onDelete: () => void; onRetryAnalysis: () => void }) {
   const imageUrls = product.imageUrls?.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []);
@@ -9,7 +10,7 @@ export function ProductCard({ product, busy, onEdit, onDelete, onRetryAnalysis }
     <View style={styles.card}>
       {imageUrls.length ? (
         <View style={styles.images}>
-          {imageUrls.map((uri) => <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />)}
+          {imageUrls.map((uri) => <Image key={uri} source={{ uri: resolveApiUrl(uri) }} style={styles.image} resizeMode="cover" />)}
         </View>
       ) : (
         <View style={[styles.image, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Sans image</Text></View>

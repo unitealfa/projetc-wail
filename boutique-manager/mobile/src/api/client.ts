@@ -38,6 +38,11 @@ function getBaseUrl(): string {
   return value.replace(/\/+$/, '');
 }
 
+export function resolveApiUrl(value: string): string {
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) return value;
+  return `${getBaseUrl()}${value.startsWith('/') ? '' : '/'}${value}`;
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   json?: unknown;

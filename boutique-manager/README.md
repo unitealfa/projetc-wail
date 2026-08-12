@@ -1,6 +1,6 @@
 # Boutique Manager
 
-Application mobile de gestion de boutiques et de recherche visuelle de produits. Tous les téléphones utilisent la même API Express; MongoDB Atlas contient les utilisateurs, boutiques et produits, Vercel Blob contient les images publiques du catalogue et Gemini extrait les caractéristiques visuelles côté backend uniquement.
+Application mobile de gestion de boutiques et de recherche visuelle de produits. Tous les téléphones utilisent la même API Express; MongoDB Atlas contient les utilisateurs, boutiques, produits et fichiers image GridFS, tandis que Gemini extrait les caractéristiques visuelles côté backend uniquement.
 
 ```text
 Expo / React Native (téléphones)
@@ -9,7 +9,7 @@ Expo / React Native (téléphones)
        Express sur Vercel
           │           │
           ▼           ▼
-   MongoDB Atlas   Vercel Blob + Gemini
+ MongoDB + GridFS   Gemini
 ```
 
 ## Fonctionnalités livrées
@@ -25,10 +25,10 @@ Expo / React Native (téléphones)
 - caméra/galerie, recadrage et compression JPEG (dimension maximale proche de 1600 px, qualité 0,8);
 - jusqu’à deux images par produit, avec ajout par caméra, galerie ou glisser-déposer sur le web;
 - bouton **Remplir automatiquement avec l’IA** dans le formulaire partagé ADMIN/BOUTIQUE : il complète les champs visuellement observables et laisse prix, stock, tailles, SKU et code-barres vides;
-- upload Vercel Blob en mémoire, compensation des uploads échoués et remplacement sûr des images;
+- fichiers image persistants dans MongoDB GridFS, compensation des uploads échoués et remplacement sûr des images;
 - analyse Gemini structurée des images catalogue, état visible et relance manuelle sans bloquer le CRUD en cas d’échec IA;
 - recherche USER par photo, matching déterministe côté serveur, taille facultative et classement géographique après filtrage des bons candidats;
-- image USER conservée uniquement en mémoire pendant la requête, jamais dans MongoDB ni Vercel Blob;
+- image USER conservée uniquement en mémoire pendant la requête et jamais enregistrée dans MongoDB;
 - états loading/error/empty, confirmations et rafraîchissement des listes au focus;
 - API au format `{ success, data }` ou `{ success: false, message, code }`.
 
@@ -58,7 +58,7 @@ boutique-manager/
 
 ## 1. Backend local
 
-Prérequis : Node.js 20+, un cluster MongoDB Atlas et un Blob Store Vercel public connecté au projet par OIDC.
+Prérequis : Node.js 20+ et un cluster MongoDB Atlas. Aucun Vercel Blob ni jeton Blob n'est nécessaire.
 
 ```bash
 cd boutique-manager/server
@@ -115,21 +115,11 @@ Au premier appel d’une route connectée à MongoDB, `ensureInitialUsersExist()
 
 Dans Atlas, créer l’utilisateur DB puis autoriser l’accès réseau adapté aux fonctions Vercel dans **Network Access**. Le téléphone n’accède jamais directement au cluster. Les transactions utilisées pour la suppression cohérente d’une boutique nécessitent la configuration replica set fournie par Atlas.
 
-### Vercel Blob et OIDC
+### Fichiers image dans MongoDB GridFS
 
-Dans le projet Vercel backend, ouvrir **Storage**, créer/connecter un Blob Store public puis vérifier dans l’onglet **Projects** du store que le projet utilise OIDC. Pour un ancien store, choisir **Upgrade to OIDC**. Les Functions Vercel reçoivent alors automatiquement un jeton court et renouvelé : aucun secret Blob durable n’est configuré dans ce projet.
+Les images produit sont enregistrées comme fichiers dans le bucket GridFS `product_images` du même cluster désigné par `MONGODB_URI`. MongoDB crée automatiquement les collections `product_images.files` et `product_images.chunks`. L'API les sert publiquement via `GET /api/images/:imageId`; Expo transforme automatiquement cette URL relative avec `EXPO_PUBLIC_SERVER_URL`.
 
-Après connexion du store, redéployer le backend et vérifier dans les variables système Vercel que `BLOB_STORE_ID` est disponible et qu’OIDC est activé pour l’environnement concerné. Ces valeurs sont gérées par Vercel : ne copiez aucune clé Blob dans l’application mobile. Si l’upload échoue, l’API refuse désormais la création avec `PRODUCT_IMAGE_UPLOAD_FAILED` au lieu de créer silencieusement un produit « Sans image ».
-
-Pour tester les opérations Blob depuis le PC, lier le dossier serveur au même projet Vercel et récupérer les variables système temporaires :
-
-```bash
-cd boutique-manager/server
-npx vercel link
-npx vercel env pull
-```
-
-Le store reste public pour cette version, car `imageUrl` est affichée directement par React Native. Les appels Blob restent isolés dans `storage.service.ts`, ce qui permettra de remplacer Vercel Blob plus tard.
+Aucune variable `BLOB_READ_WRITE_TOKEN`, `BLOB_STORE_ID` ou `VERCEL_OIDC_TOKEN` n'est utilisée. Le disque d'une Function Vercel ne peut pas servir de stockage permanent : il est en lecture seule, à l'exception de `/tmp`, qui est un espace de travail temporaire. GridFS permet donc de garder réellement les fichiers après l'arrêt ou le redémarrage d'une Function.
 
 ## 2. Application Expo Go
 
@@ -187,13 +177,13 @@ npm run lint
    - `GEMINI_MODEL=gemini-3.5-flash`;
    - `GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite`.
 
-6. Dans **Storage**, créer ou connecter le Vercel Blob Store public au projet backend et activer la connexion OIDC.
+6. Ne créer aucun Blob Store : les images utilisent automatiquement le MongoDB configuré par `MONGODB_URI`.
 7. Déployer.
 8. Tester `https://votre-backend.vercel.app/api/health`.
 9. Placer `https://votre-backend.vercel.app` dans `mobile/.env` comme `EXPO_PUBLIC_SERVER_URL`.
 10. Relancer Expo puis scanner de nouveau le QR code.
 
-Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones configurés avec la même URL Vercel partagent les mêmes données Atlas et les mêmes images Blob.
+Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones configurés avec la même URL Vercel partagent les mêmes données et images GridFS dans Atlas.
 
 ## 4. Scénarios de test
 
@@ -249,4 +239,4 @@ Passer `MOCK_AUTH_ENABLED=false` masque complètement `/api/auth/options` et `/a
 
 Les tests automatisés couvrent le matching, la marque invisible, le filtrage avant distance, la taille, le stock zéro, Haversine, les permissions USER et les pannes/rate limits/réponses invalides du pool Gemini avec des doubles de test. Un test réel de Gemini nécessite vos propres clés et peut consommer du quota; il n’est volontairement pas lancé par `npm test`.
 
-Les tests MongoDB, seed concurrent, accès cross-shop et partage entre téléphones nécessitent vos propres valeurs `MONGODB_URI`, `JWT_SECRET` et un déploiement Vercel. Les tests upload/remplacement/suppression Blob nécessitent un Blob Store connecté au projet par OIDC. Ne placez jamais de secrets dans Git ou dans l’application mobile.
+Les tests MongoDB, GridFS, seed concurrent, accès cross-shop et partage entre téléphones nécessitent vos propres valeurs `MONGODB_URI`, `JWT_SECRET` et éventuellement un déploiement Vercel. Aucun Blob Store n'est nécessaire. Ne placez jamais de secrets dans Git ou dans l’application mobile.

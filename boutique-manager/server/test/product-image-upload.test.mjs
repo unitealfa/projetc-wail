@@ -14,12 +14,12 @@ const images = [
 
 test('une photo reçue ne peut plus produire silencieusement un produit sans image', async () => {
   await assert.rejects(
-    uploadRequiredProductImages('shop', images, async () => { throw new Error('Blob indisponible'); }),
+    uploadRequiredProductImages('shop', images, async () => { throw new Error('GridFS indisponible'); }),
     (error) => error.code === 'PRODUCT_IMAGE_UPLOAD_FAILED' && error.statusCode === 503,
   );
 });
 
-test('si la seconde image échoue, la première image Blob est nettoyée', async () => {
+test('si la seconde image échoue, le premier fichier GridFS est nettoyé', async () => {
   const cleaned = [];
   let index = 0;
   await assert.rejects(
@@ -29,11 +29,11 @@ test('si la seconde image échoue, la première image Blob est nettoyée', async
       async () => {
         index += 1;
         if (index === 2) throw new Error('échec seconde image');
-        return { imageUrl: 'https://blob.test/one.jpg', imageStorageKey: 'products/shop/one.jpg' };
+        return { imageUrl: '/api/images/507f1f77bcf86cd799439011', imageStorageKey: '507f1f77bcf86cd799439011' };
       },
       async (key) => { cleaned.push(key); },
     ),
     (error) => error.code === 'PRODUCT_IMAGE_UPLOAD_FAILED',
   );
-  assert.deepEqual(cleaned, ['products/shop/one.jpg']);
+  assert.deepEqual(cleaned, ['507f1f77bcf86cd799439011']);
 });

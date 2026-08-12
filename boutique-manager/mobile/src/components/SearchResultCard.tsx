@@ -2,6 +2,7 @@ import { Image, Linking, StyleSheet, Text, View } from 'react-native';
 import type { SearchMatch } from '../types/productSearch';
 import { colors } from '../constants/theme';
 import { AppButton } from './AppButton';
+import { resolveApiUrl } from '../api/client';
 
 const LABELS = {
   VERY_LIKELY: 'Correspondance très probable',
@@ -22,7 +23,7 @@ export function SearchResultCard({ match, requestedSize }: { match: SearchMatch;
       ? `Taille ${requestedSize} non déclarée`
       : null;
   return <View style={styles.card}>
-    {imageUrls.length ? <View style={styles.images}>{imageUrls.map((uri) => <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />)}</View> : null}
+    {imageUrls.length ? <View style={styles.images}>{imageUrls.map((uri) => <Image key={uri} source={{ uri: resolveApiUrl(uri) }} style={styles.image} resizeMode="cover" />)}</View> : null}
     <View style={styles.content}>
       <Text style={styles.label}>{LABELS[match.confidenceLabel]} · {match.score}%</Text>
       <Text style={styles.name}>{match.product.name}</Text>

@@ -70,7 +70,7 @@ export async function deleteShopCascade(shopId: string): Promise<void> {
   );
   results.forEach((result, index) => {
     if (result.status === 'rejected') {
-      console.error('Suppression Blob échouée après suppression boutique.', {
+      console.error('Suppression GridFS échouée après suppression boutique.', {
         shopId,
         storageKey: storageKeys[index],
         reason: result.reason instanceof Error ? result.reason.message : 'Erreur inconnue',

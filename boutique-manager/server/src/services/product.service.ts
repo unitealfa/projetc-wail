@@ -5,7 +5,7 @@ import type { CreateProductInput, UpdateProductInput } from '../schemas/product.
 import type { PrecomputedProductAnalysis } from '../schemas/product-autofill.schema.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createProductCode } from '../utils/productCode.js';
-import { deleteProductImage, uploadProductImage } from './storage.service.js';
+import { deleteProductImage, downloadProductImage, uploadProductImage } from './storage.service.js';
 import { analyzeProductImages } from './visual-analysis.service.js';
 import type { StoredImage } from './storage.service.js';
 
@@ -23,14 +23,12 @@ export async function uploadRequiredProductImages(
       stored.push(await upload(shopId, image));
     } catch (error) {
       await Promise.allSettled(stored.map((item) => cleanup(item.imageStorageKey)));
-      console.error("Upload Blob du produit impossible.", {
+      console.error("Enregistrement GridFS du produit impossible.", {
         errorType: error instanceof Error ? error.name : 'UnknownError',
-        hasOidcToken: Boolean(process.env.VERCEL_OIDC_TOKEN),
-        hasStoreId: Boolean(process.env.BLOB_STORE_ID),
       });
       throw new ApiError(
         503,
-        "L'image n'a pas pu être enregistrée. Vérifiez que le Blob Store Vercel est connecté au projet puis réessayez.",
+        "L'image n'a pas pu être enregistrée dans MongoDB. Vérifiez la connexion à la base puis réessayez.",
         'PRODUCT_IMAGE_UPLOAD_FAILED',
       );
     }
@@ -142,7 +140,10 @@ export async function updateProduct(
     throw new ApiError(503, "Toutes les images n'ont pas pu être enregistrées.", 'PRODUCT_IMAGE_UPLOAD_FAILED');
   }
   const finalUrls = [...retained.map((image) => image.url), ...storedImages.map((image) => image.imageUrl)];
-  const finalKeys = [...retained.map((image) => image.key).filter((key): key is string => Boolean(key)), ...storedImages.map((image) => image.imageStorageKey)];
+  // Garder les deux tableaux alignés, y compris si une ancienne URL Blob ne
+  // possède pas de clé GridFS. Une chaîne vide représente cette clé absente.
+  const finalKeys = [...retained.map((image) => image.key ?? ''), ...storedImages.map((image) => image.imageStorageKey)];
+  const firstKey = finalKeys[0] || undefined;
   const removedKeys = existingPairs
     .filter((image) => !retained.some((kept) => kept.url === image.url))
     .map((image) => image.key)
@@ -155,7 +156,7 @@ export async function updateProduct(
       imageUrls: finalUrls,
       imageStorageKeys: finalKeys,
       ...(finalUrls[0] ? { imageUrl: finalUrls[0] } : {}),
-      ...(finalKeys[0] ? { imageStorageKey: finalKeys[0] } : {}),
+      ...(firstKey ? { imageStorageKey: firstKey } : {}),
       ...(images.length ? {
         aiVisualProfile: null,
         aiAnalysisStatus: AI_ANALYSIS_STATUS.PENDING,
@@ -173,10 +174,10 @@ export async function updateProduct(
       { _id: productId, shopId },
       {
         $set: updateFields,
-        ...(!finalUrls[0] || !finalKeys[0] ? {
+        ...(!finalUrls[0] || !firstKey ? {
           $unset: {
             ...(!finalUrls[0] ? { imageUrl: 1 } : {}),
-            ...(!finalKeys[0] ? { imageStorageKey: 1 } : {}),
+            ...(!firstKey ? { imageStorageKey: 1 } : {}),
           },
         } : {}),
       },
@@ -238,13 +239,23 @@ export async function retryProductAnalysis(
 ) {
   const product = await Product.findOne({ _id: productId, shopId });
   if (!product) throw new ApiError(404, 'Produit introuvable.', 'PRODUCT_NOT_FOUND');
-  const imageUrls = product.imageUrls.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []);
-  if (!imageUrls.length) throw new ApiError(400, "Ce produit n'a pas d'image à analyser.", 'PRODUCT_IMAGE_REQUIRED');
+  const imageUrls: string[] = product.imageUrls.length ? product.imageUrls : (product.imageUrl ? [product.imageUrl] : []);
+  const storageKeys: string[] = product.imageStorageKeys.length
+    ? product.imageStorageKeys
+    : (product.imageStorageKey ? [product.imageStorageKey] : []);
+  if (!storageKeys.length && !imageUrls.length) {
+    throw new ApiError(400, "Ce produit n'a pas d'image à analyser.", 'PRODUCT_IMAGE_REQUIRED');
+  }
   product.aiAnalysisStatus = AI_ANALYSIS_STATUS.PENDING;
   product.updatedBy = userId;
   await product.save();
   try {
-    const images = await Promise.all(imageUrls.slice(0, 2).map(downloadCatalogImage));
+    const images = await Promise.all(imageUrls.slice(0, 2).map((imageUrl, index) => {
+      const storageKey = storageKeys[index];
+      return storageKey && /^[a-f\d]{24}$/i.test(storageKey)
+        ? downloadProductImage(storageKey)
+        : downloadCatalogImage(imageUrl);
+    }));
     const result = await analyzeProductImages(images);
     product.aiVisualProfile = result.profile;
     product.aiAnalysisStatus = AI_ANALYSIS_STATUS.READY;
@@ -273,6 +284,6 @@ export async function deleteProduct(shopId: string, productId: string): Promise<
     : (product.imageStorageKey ? [product.imageStorageKey] : []);
   const results = await Promise.allSettled([...new Set(storageKeys)].map(deleteProductImage));
   if (results.some((result) => result.status === 'rejected')) {
-    console.error('Suppression de certaines images Blob échouée après suppression produit.', { productId });
+    console.error('Suppression de certaines images GridFS échouée après suppression produit.', { productId });
   }
 }

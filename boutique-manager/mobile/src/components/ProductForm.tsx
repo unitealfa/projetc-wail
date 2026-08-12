@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { productsApi } from '../api/products.api';
+import { resolveApiUrl } from '../api/client';
 import type { CustomAttribute, PickedImage, Product, ProductAiAnalysis, ProductInput } from '../types/product';
 import { commaSeparatedValues } from '../utils/arrays';
 import { errorMessage } from '../utils/errorMessage';
@@ -184,7 +185,7 @@ export function ProductForm({ shopId, initialProduct, submitting, submitLabel, o
         {retainedImageUrls.length || images.length ? (
           <View style={styles.previews}>
             {retainedImageUrls.map((uri) => <View key={uri} style={styles.previewItem}>
-              <Image source={{ uri }} style={styles.preview} resizeMode="cover" />
+              <Image source={{ uri: resolveApiUrl(uri) }} style={styles.preview} resizeMode="cover" />
               <AppButton title="Retirer" variant="danger" disabled={submitting || analyzing} onPress={() => setRetainedImageUrls((current) => current.filter((item) => item !== uri))} />
             </View>)}
             {images.map((item, index) => <View key={item.uri} style={styles.previewItem}>
