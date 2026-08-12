@@ -1,0 +1,55 @@
+export function profile(overrides = {}) {
+  return {
+    schemaVersion: 1,
+    isProduct: true,
+    multipleProductsDetected: false,
+    productFamily: 'clothing',
+    productType: 'sweater',
+    subtype: 'pull col rond',
+    brand: 'Nike',
+    modelOrLine: null,
+    primaryColor: 'noir',
+    secondaryColors: ['blanc'],
+    pattern: 'uni',
+    materialAppearance: ['maille'],
+    texture: ['maille fine'],
+    silhouette: 'droite',
+    fit: 'regular',
+    necklineOrCollar: 'col rond',
+    sleeveLength: 'manches longues',
+    closure: null,
+    pocketDetails: [],
+    logoDetails: ['petit logo blanc poitrine gauche'],
+    visibleText: ['Nike'],
+    distinctiveFeatures: ['petit logo poitrine gauche'],
+    styleKeywords: ['casual'],
+    visualFingerprintTokens: ['pull-noir', 'maille-fine', 'col-rond', 'logo-blanc-gauche', 'coupe-regular'],
+    shortDescription: 'Pull noir Nike en maille fine avec petit logo blanc.',
+    confidence: 0.95,
+    fieldConfidence: { productType: 0.98, brand: 0.9, model: 0, color: 0.95, pattern: 0.8 },
+    ...overrides,
+  };
+}
+
+export function product(id, candidateProfile, shop = {}, overrides = {}) {
+  return {
+    _id: id,
+    name: `Produit ${id}`,
+    type: 'Pull',
+    brand: 'Nike',
+    colors: ['Noir'],
+    sizes: ['M', 'L'],
+    stock: 2,
+    aiVisualProfile: candidateProfile,
+    shopId: {
+      _id: `shop-${id}`,
+      name: `Boutique ${id}`,
+      phone: '0550000000',
+      address: 'Alger',
+      latitude: 36.75,
+      longitude: 3.04,
+      ...shop,
+    },
+    ...overrides,
+  };
+}

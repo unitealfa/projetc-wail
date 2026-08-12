@@ -27,7 +27,19 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Autoriser Boutique Manager à choisir une photo de produit.",
+          "cameraPermission": "Autoriser Boutique Manager à photographier un produit."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Votre position sert uniquement à classer les boutiques proches."
+        }
+      ],
       [
         "expo-splash-screen",
         {

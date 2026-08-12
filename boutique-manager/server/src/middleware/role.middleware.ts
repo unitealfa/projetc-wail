@@ -20,6 +20,7 @@ export function requireRole(role: UserRole): RequestHandler {
 }
 
 export const requireAdmin = requireRole(USER_ROLES.ADMIN);
+export const requireUser = requireRole(USER_ROLES.USER);
 
 export const requireShopAccess: RequestHandler = asyncHandler(async (request, _response, next) => {
   if (!request.user) {
@@ -27,6 +28,10 @@ export const requireShopAccess: RequestHandler = asyncHandler(async (request, _r
   }
   const shopId = routeParam(request.params.shopId, 'Boutique');
   assertObjectId(shopId, 'Boutique');
+
+  if (request.user.role === USER_ROLES.USER) {
+    throw new ApiError(403, 'Action non autorisée.', 'FORBIDDEN');
+  }
 
   if (
     request.user.role === USER_ROLES.BOUTIQUE &&

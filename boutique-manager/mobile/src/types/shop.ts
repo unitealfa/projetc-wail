@@ -3,10 +3,14 @@ export interface Shop {
   name: string;
   phone: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ShopInput {
   name: string;
   phone: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }

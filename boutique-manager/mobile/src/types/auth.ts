@@ -20,4 +20,5 @@ export interface BoutiqueAuthOption extends AuthOption {
 export interface AuthOptions {
   admin: AuthOption;
   boutiques: BoutiqueAuthOption[];
+  users: AuthOption[];
 }

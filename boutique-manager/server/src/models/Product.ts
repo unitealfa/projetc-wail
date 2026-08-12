@@ -1,4 +1,6 @@
 import mongoose, { Schema, type HydratedDocument, type Types } from 'mongoose';
+import { AI_ANALYSIS_STATUS, type AiAnalysisStatus } from '../constants/ai-analysis.js';
+import type { VisualProductProfile } from '../types/visual-product-profile.js';
 
 export interface ICustomAttribute {
   key: string;
@@ -25,6 +27,10 @@ export interface IProduct {
   stock?: number;
   imageUrl?: string;
   imageStorageKey?: string;
+  aiVisualProfile?: VisualProductProfile | null;
+  aiAnalysisStatus?: AiAnalysisStatus | null;
+  aiAnalysisModel?: string | null;
+  aiAnalyzedAt?: Date | null;
   customAttributes: ICustomAttribute[];
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
@@ -63,6 +69,10 @@ const productSchema = new Schema<IProduct>(
     stock: { type: Number, min: 0 },
     imageUrl: { type: String },
     imageStorageKey: { type: String },
+    aiVisualProfile: { type: Schema.Types.Mixed, default: null },
+    aiAnalysisStatus: { type: String, enum: Object.values(AI_ANALYSIS_STATUS), default: null },
+    aiAnalysisModel: { type: String, default: null },
+    aiAnalyzedAt: { type: Date, default: null },
     customAttributes: { type: [customAttributeSchema], default: [] },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

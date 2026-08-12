@@ -15,9 +15,10 @@ function assertMockAuthEnabled(): void {
 
 export const getAuthOptions: RequestHandler = asyncHandler(async (_request, response) => {
   assertMockAuthEnabled();
-  const [admin, boutiques] = await Promise.all([
+  const [admin, boutiques, users] = await Promise.all([
     User.findOne({ role: USER_ROLES.ADMIN, isActive: true }),
     User.find({ role: USER_ROLES.BOUTIQUE, isActive: true }).populate('shopId').sort({ displayName: 1 }),
+    User.find({ role: USER_ROLES.USER, isActive: true }).sort({ displayName: 1 }),
   ]);
   if (!admin) {
     throw new ApiError(500, 'Administrateur indisponible.', 'ADMIN_UNAVAILABLE');
@@ -33,6 +34,7 @@ export const getAuthOptions: RequestHandler = asyncHandler(async (_request, resp
           ? [{ userId: user.id, displayName: user.displayName, shopId: String(shop._id), shopName: shop.name ?? user.displayName }]
           : [];
       }),
+      users: users.map((user) => ({ userId: user.id, displayName: user.displayName })),
     },
   });
 });

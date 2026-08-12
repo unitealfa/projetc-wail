@@ -18,6 +18,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string>();
   const [chooseBoutique, setChooseBoutique] = useState(false);
+  const [chooseUser, setChooseUser] = useState(false);
   const [noBoutique, setNoBoutique] = useState(false);
 
   const load = useCallback(async () => {
@@ -46,6 +47,15 @@ export default function LoginScreen() {
     setChooseBoutique(true);
   };
 
+  const userLogin = async () => {
+    const latest = await authApi.options().catch((reason: unknown) => { setError(errorMessage(reason)); return null; });
+    if (!latest) return;
+    setOptions(latest);
+    if (latest.users.length === 0) { setError('Aucun utilisateur disponible.'); return; }
+    if (latest.users.length === 1) { await connect(latest.users[0].userId); return; }
+    setChooseUser(true);
+  };
+
   if (user) return <Redirect href="/" />;
   if (loading) return <LoadingState />;
   if (error && !options) return <ErrorState message={error} onRetry={() => void load()} />;
@@ -53,16 +63,22 @@ export default function LoginScreen() {
   return (
     <Screen style={styles.screen}>
       <View style={styles.card}>
-        <Text style={styles.title}>{chooseBoutique ? 'Choisir une boutique' : 'Connexion'}</Text>
+        <Text style={styles.title}>{chooseBoutique ? 'Choisir une boutique' : chooseUser ? 'Choisir un utilisateur' : 'Connexion'}</Text>
         {chooseBoutique ? (
           <>
             {options?.boutiques.map((boutique) => <AppButton key={boutique.userId} title={boutique.shopName} disabled={submitting} onPress={() => void connect(boutique.userId)} />)}
             <AppButton title="Retour" variant="secondary" disabled={submitting} onPress={() => setChooseBoutique(false)} />
           </>
+        ) : chooseUser ? (
+          <>
+            {options?.users.map((option) => <AppButton key={option.userId} title={option.displayName} disabled={submitting} onPress={() => void connect(option.userId)} />)}
+            <AppButton title="Retour" variant="secondary" disabled={submitting} onPress={() => setChooseUser(false)} />
+          </>
         ) : (
           <>
             <AppButton title="Administrateur" loading={submitting} onPress={() => options && void connect(options.admin.userId)} />
             <AppButton title="Boutique" variant="secondary" disabled={submitting} onPress={() => void boutiqueLogin()} />
+            <AppButton title="Utilisateur" variant="secondary" disabled={submitting} onPress={() => void userLogin()} />
             {noBoutique ? <Text style={styles.empty}>Aucune boutique disponible.</Text> : null}
           </>
         )}

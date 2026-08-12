@@ -9,7 +9,7 @@ export const listUsers: RequestHandler = asyncHandler(async (_request, response)
     data: {
       users: users.map((user) => {
         const shop = user.shopId as unknown as
-          | { _id?: unknown; name?: string; phone?: string; address?: string }
+          | { _id?: unknown; name?: string; phone?: string; address?: string; latitude?: number | null; longitude?: number | null }
           | null;
         return {
           id: user.id,
@@ -18,7 +18,7 @@ export const listUsers: RequestHandler = asyncHandler(async (_request, response)
           shopId: shop?._id ? String(shop._id) : null,
           isActive: user.isActive,
           shop: shop?._id
-            ? { id: String(shop._id), name: shop.name, phone: shop.phone, address: shop.address }
+            ? { id: String(shop._id), name: shop.name, phone: shop.phone, address: shop.address, latitude: shop.latitude ?? null, longitude: shop.longitude ?? null }
             : null,
         };
       }),

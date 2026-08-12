@@ -28,6 +28,9 @@ export interface Product extends ProductInput {
   internalCode: string;
   imageUrl?: string;
   imageStorageKey?: string;
+  aiAnalysisStatus?: 'PENDING' | 'READY' | 'FAILED' | null;
+  aiAnalysisModel?: string | null;
+  aiAnalyzedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

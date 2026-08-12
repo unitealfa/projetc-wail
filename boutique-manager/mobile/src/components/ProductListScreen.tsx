@@ -15,6 +15,7 @@ import { Screen } from './Screen';
 export function ProductListScreen({ shopId, shopName, mode }: { shopId: string; shopName?: string; mode: 'admin' | 'shop' }) {
   const [products, setProducts] = useState<Product[]>([]); const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState<string>(); const [deleting, setDeleting] = useState<string>();
+  const [retrying, setRetrying] = useState<string>();
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
@@ -41,6 +42,12 @@ export function ProductListScreen({ shopId, shopName, mode }: { shopId: string; 
     catch (reason) { Alert.alert('Erreur', errorMessage(reason)); }
     finally { setDeleting(undefined); }
   };
+  const retryAnalysis = async (productId: string) => {
+    setRetrying(productId);
+    try { await productsApi.retryAnalysis(shopId, productId); await load(true); }
+    catch (reason) { Alert.alert('Analyse indisponible', errorMessage(reason)); }
+    finally { setRetrying(undefined); }
+  };
 
   if (loading) return <LoadingState />;
   if (error && products.length === 0) return <ErrorState message={error} onRetry={() => void load()} />;
@@ -48,7 +55,7 @@ export function ProductListScreen({ shopId, shopName, mode }: { shopId: string; 
     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />}
     ListHeaderComponent={<View style={styles.header}>{shopName ? <Text style={styles.title}>Produits - {shopName}</Text> : null}<AppButton title="+ Ajouter un produit" onPress={newProduct} />{error ? <Text style={styles.error}>{error}</Text> : null}</View>}
     ListEmptyComponent={<EmptyState message="Aucun produit." />}
-    renderItem={({ item }) => <ProductCard product={item} busy={deleting === item._id} onEdit={() => editProduct(item._id)} onDelete={() => confirmDelete(item)} />}
+    renderItem={({ item }) => <ProductCard product={item} busy={deleting === item._id || retrying === item._id} onEdit={() => editProduct(item._id)} onDelete={() => confirmDelete(item)} onRetryAnalysis={() => void retryAnalysis(item._id)} />}
   /></Screen>;
 }
 

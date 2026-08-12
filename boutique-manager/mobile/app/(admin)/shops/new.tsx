@@ -6,6 +6,7 @@ import { AppButton } from '@/src/components/AppButton';
 import { AppInput } from '@/src/components/AppInput';
 import { colors } from '@/src/constants/theme';
 import { errorMessage } from '@/src/utils/errorMessage';
+import { geocodeAddress } from '@/src/utils/geocodeAddress';
 
 export default function NewShopScreen() {
   const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [address, setAddress] = useState('');
@@ -14,7 +15,11 @@ export default function NewShopScreen() {
     const input = { name: name.trim(), phone: phone.trim(), address: address.trim() };
     if (!input.name || !input.phone || !input.address) { setError('Tous les champs sont obligatoires.'); return; }
     setSubmitting(true); setError(undefined);
-    try { await shopsApi.create(input); router.back(); }
+    try {
+      const coordinates = await geocodeAddress(input.address);
+      await shopsApi.create({ ...input, latitude: coordinates?.latitude ?? null, longitude: coordinates?.longitude ?? null });
+      router.back();
+    }
     catch (reason) { setError(errorMessage(reason)); }
     finally { setSubmitting(false); }
   };

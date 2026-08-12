@@ -4,6 +4,7 @@ import { databaseMiddleware } from './middleware/database.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { notFoundMiddleware } from './middleware/notFound.middleware.js';
 import { authRouter } from './routes/auth.routes.js';
+import { aiRouter } from './routes/ai.routes.js';
 import { productRouter } from './routes/product.routes.js';
 import { shopRouter } from './routes/shop.routes.js';
 import { userRouter } from './routes/user.routes.js';
@@ -35,6 +36,7 @@ app.get('/api/health', (_request, response) => {
 
 app.use('/api', databaseMiddleware);
 app.use('/api/auth', authRouter);
+app.use('/api/ai', aiRouter);
 app.use('/api/users', userRouter);
 app.use('/api/shops', shopRouter);
 app.use('/api/shops/:shopId/products', productRouter);

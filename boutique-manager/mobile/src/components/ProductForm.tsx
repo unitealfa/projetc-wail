@@ -4,11 +4,11 @@ import * as ImagePicker from 'expo-image-picker';
 import type { CustomAttribute, PickedImage, Product, ProductInput } from '../types/product';
 import { commaSeparatedValues } from '../utils/arrays';
 import { colors } from '../constants/theme';
+import { prepareImage } from '../utils/prepareImage';
 import { AppButton } from './AppButton';
 import { AppInput } from './AppInput';
 
 const PRODUCT_TYPES = ['Pantalon', 'Chaussure', 'T-shirt', 'Veste', 'Robe', 'Sac', 'Accessoire', 'Autre'];
-const MAX_IMAGE_SIZE = 3 * 1024 * 1024;
 
 interface ProductFormProps {
   initialProduct?: Product;
@@ -40,26 +40,19 @@ export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit 
   const [attributes, setAttributes] = useState<CustomAttribute[]>(initialProduct?.customAttributes ?? []);
   const [error, setError] = useState<string>();
 
-  const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const pickImage = async (source: 'camera' | 'gallery') => {
+    const permission = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission requise', 'Autorisez l’accès aux photos pour choisir une image.');
+      Alert.alert('Permission requise', source === 'camera' ? 'Autorisez l’accès à la caméra.' : 'Autorisez l’accès aux photos.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.8 });
+    const picker = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
+    const result = await picker({ mediaTypes: ['images'], allowsEditing: true, quality: 1 });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    if (asset.fileSize && asset.fileSize > MAX_IMAGE_SIZE) {
-      Alert.alert('Image trop grande', 'Choisissez une image de 3 Mio maximum.');
-      return;
-    }
-    const extension = asset.fileName?.split('.').pop()?.toLowerCase();
-    const mimeType = asset.mimeType ?? (extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg');
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
-      Alert.alert('Format non accepté', 'Choisissez une image JPEG, PNG ou WEBP.');
-      return;
-    }
-    setImage({ uri: asset.uri, fileName: asset.fileName ?? `product.${mimeType.split('/')[1]}`, mimeType, fileSize: asset.fileSize });
+    try { setImage(await prepareImage(result.assets[0], 'produit')); }
+    catch { Alert.alert('Image invalide', 'Impossible de préparer cette image.'); }
   };
 
   const updateAttribute = (index: number, field: keyof CustomAttribute, value: string) => {
@@ -112,8 +105,11 @@ export function ProductForm({ initialProduct, submitting, submitLabel, onSubmit 
         ) : (
           <View style={[styles.preview, styles.previewPlaceholder]}><Text style={styles.hint}>Aucune image</Text></View>
         )}
-        <AppButton title="Choisir une image (facultatif)" variant="secondary" disabled={submitting} onPress={() => void pickImage()} />
-        <Text style={styles.hint}>Facultatif · JPEG, PNG ou WEBP · 3 Mio maximum</Text>
+        <View style={styles.imageActions}>
+          <View style={styles.imageAction}><AppButton title="Caméra" disabled={submitting} onPress={() => void pickImage('camera')} /></View>
+          <View style={styles.imageAction}><AppButton title="Galerie" variant="secondary" disabled={submitting} onPress={() => void pickImage('gallery')} /></View>
+        </View>
+        <Text style={styles.hint}>Facultatif · recadrage puis compression JPEG automatique</Text>
       </Section>
 
       <Section title="IDENTIFICATION">
@@ -177,6 +173,8 @@ const styles = StyleSheet.create({
   preview: { width: '100%', height: 220, borderRadius: 10, backgroundColor: '#E2E8F0' },
   previewPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   hint: { color: colors.muted, fontSize: 12, textAlign: 'center' },
+  imageActions: { flexDirection: 'row', gap: 10 },
+  imageAction: { flex: 1 },
   label: { color: colors.text, fontSize: 14, fontWeight: '600' },
   typeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   typeChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface },

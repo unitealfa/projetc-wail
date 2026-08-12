@@ -9,7 +9,7 @@ export const errorMiddleware: ErrorRequestHandler = (error, _request, response, 
   if (error instanceof ApiError) {
     normalized = error;
   } else if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-    normalized = new ApiError(413, "L'image dépasse la limite de 3 Mio.", 'IMAGE_TOO_LARGE');
+    normalized = new ApiError(413, "L'image dépasse la taille autorisée.", 'IMAGE_TOO_LARGE');
   } else if (error instanceof multer.MulterError) {
     normalized = new ApiError(400, "Téléversement d'image invalide.", 'UPLOAD_ERROR');
   } else if (error instanceof ZodError) {

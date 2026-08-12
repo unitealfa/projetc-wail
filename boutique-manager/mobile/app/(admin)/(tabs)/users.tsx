@@ -64,7 +64,13 @@ export default function UsersScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>}
         ListEmptyComponent={<EmptyState message="Aucune boutique." />}
-        renderItem={({ item }) => <ShopCard user={item} busy={deletingId === item.shopId} onDelete={() => confirmDelete(item)} onProducts={() => item.shopId && router.push({ pathname: '/(admin)/shops/[shopId]/products', params: { shopId: item.shopId, shopName: item.shop?.name ?? item.displayName } })} />}
+        renderItem={({ item }) => <ShopCard
+          user={item}
+          busy={deletingId === item.shopId}
+          onDelete={() => confirmDelete(item)}
+          onProducts={() => item.shopId && router.push({ pathname: '/(admin)/shops/[shopId]/products', params: { shopId: item.shopId, shopName: item.shop?.name ?? item.displayName } })}
+          onEdit={() => item.shopId && router.push({ pathname: '/(admin)/shops/[shopId]/edit', params: { shopId: item.shopId, name: item.shop?.name ?? item.displayName, phone: item.shop?.phone ?? '', address: item.shop?.address ?? '' } })}
+        />}
       />
     </Screen>
   );

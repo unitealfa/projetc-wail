@@ -4,6 +4,7 @@ import { createProductSchema, updateProductSchema } from '../schemas/product.sch
 import {
   createProduct as createProductService,
   deleteProduct as deleteProductService,
+  retryProductAnalysis as retryProductAnalysisService,
   updateProduct as updateProductService,
 } from '../services/product.service.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -66,4 +67,12 @@ export const deleteProduct: RequestHandler = asyncHandler(async (request, respon
   assertObjectId(productId, 'Produit');
   await deleteProductService(shopId, productId);
   response.json({ success: true, data: { deleted: true } });
+});
+
+export const retryProductAnalysis: RequestHandler = asyncHandler(async (request, response) => {
+  const shopId = routeParam(request.params.shopId, 'Boutique');
+  const productId = routeParam(request.params.productId, 'Produit');
+  assertObjectId(productId, 'Produit');
+  const product = await retryProductAnalysisService(shopId, productId, request.user!._id);
+  response.json({ success: true, data: { product } });
 });

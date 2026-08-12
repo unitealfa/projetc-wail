@@ -11,6 +11,9 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  GEMINI_API_KEYS: z.string().default(''),
+  GEMINI_MODEL: z.string().min(1).default('gemini-3.5-flash'),
+  GEMINI_FALLBACK_MODEL: z.string().min(1).default('gemini-3.5-flash-lite'),
 });
 
 const parsed = envSchema.safeParse(process.env);

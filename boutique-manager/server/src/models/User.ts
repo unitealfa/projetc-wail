@@ -6,6 +6,7 @@ export interface IUser {
   role: UserRole;
   shopId: Types.ObjectId | null;
   isActive: boolean;
+  systemSeedKey?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +19,7 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: Object.values(USER_ROLES), required: true, index: true },
     shopId: { type: Schema.Types.ObjectId, ref: 'Shop', default: null, index: true },
     isActive: { type: Boolean, default: true, required: true },
+    systemSeedKey: { type: String, trim: true },
   },
   { timestamps: true },
 );
@@ -25,6 +27,10 @@ const userSchema = new Schema<IUser>(
 userSchema.index(
   { role: 1 },
   { unique: true, partialFilterExpression: { role: USER_ROLES.ADMIN }, name: 'one_admin_only' },
+);
+userSchema.index(
+  { systemSeedKey: 1 },
+  { unique: true, sparse: true, name: 'one_document_per_system_seed' },
 );
 userSchema.index(
   { shopId: 1 },

@@ -1,6 +1,6 @@
 # Boutique Manager
 
-MVP mobile complet de gestion de boutiques et de produits. Tous les téléphones utilisent la même API Express; MongoDB Atlas contient les utilisateurs, boutiques et produits, tandis que Vercel Blob contient les images publiques des produits.
+Application mobile de gestion de boutiques et de recherche visuelle de produits. Tous les téléphones utilisent la même API Express; MongoDB Atlas contient les utilisateurs, boutiques et produits, Vercel Blob contient les images publiques du catalogue et Gemini extrait les caractéristiques visuelles côté backend uniquement.
 
 ```text
 Expo / React Native (téléphones)
@@ -9,19 +9,24 @@ Expo / React Native (téléphones)
        Express sur Vercel
           │           │
           ▼           ▼
-   MongoDB Atlas   Vercel Blob
+   MongoDB Atlas   Vercel Blob + Gemini
 ```
 
 ## Fonctionnalités livrées
 
-- deux rôles centralisés : `ADMIN` et `BOUTIQUE`;
+- trois rôles centralisés : `ADMIN`, `BOUTIQUE` et `USER`;
 - un seul ADMIN, créé par seed idempotent et protégé par un index MongoDB unique partiel;
+- un premier USER créé par seed idempotent, sans contrainte empêchant d’ajouter plusieurs USER plus tard;
 - authentification de démonstration sélectionnant un utilisateur, JWT dans SecureStore et restauration via `/api/auth/me`;
 - rechargement de l’utilisateur en base à chaque requête protégée (rôle et boutique du client ignorés);
 - création/suppression en cascade des boutiques par l’ADMIN;
 - CRUD produit identique côté ADMIN et BOUTIQUE, avec contrôle cross-shop;
-- formulaire produit partagé, attributs personnalisés et image JPEG/PNG/WEBP de 3 Mio maximum;
+- formulaire produit partagé où seuls le nom et une couleur sont obligatoires pendant les tests;
+- caméra/galerie, recadrage et compression JPEG (dimension maximale proche de 1600 px, qualité 0,8);
 - upload Vercel Blob en mémoire, compensation des uploads échoués et remplacement sûr des images;
+- analyse Gemini structurée des images catalogue, état visible et relance manuelle sans bloquer le CRUD en cas d’échec IA;
+- recherche USER par photo, matching déterministe côté serveur, taille facultative et classement géographique après filtrage des bons candidats;
+- image USER conservée uniquement en mémoire pendant la requête, jamais dans MongoDB ni Vercel Blob;
 - états loading/error/empty, confirmations et rafraîchissement des listes au focus;
 - API au format `{ success, data }` ou `{ success: false, message, code }`.
 
@@ -67,6 +72,9 @@ MONGODB_URI=mongodb+srv://...
 JWT_SECRET=une-longue-valeur-aleatoire-de-32-caracteres-minimum
 JWT_EXPIRES_IN=7d
 MOCK_AUTH_ENABLED=true
+GEMINI_API_KEYS=cle_gemini_1,cle_gemini_2
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
 ```
 
 Générer `JWT_SECRET` avec une valeur réellement aléatoire, puis copier uniquement le résultat dans `.env` :
@@ -77,7 +85,7 @@ openssl rand -base64 48
 
 Ne pas utiliser littéralement les placeholders de cette documentation.
 
-`MONGODB_URI` et `JWT_SECRET` restent exclusivement dans `server/.env` en local et dans les variables Vercel en ligne. Ils ne doivent jamais être copiés dans `mobile/`.
+`MONGODB_URI`, `JWT_SECRET` et `GEMINI_API_KEYS` restent exclusivement dans `server/.env` en local et dans les variables Vercel en ligne. Ils ne doivent jamais être copiés dans `mobile/`. Dans un fichier `.env` et dans Vercel, coller les valeurs directement, sans guillemets. Plusieurs clés Gemini sont séparées par des virgules; une clé n’est essayée qu’une fois par analyse.
 
 ```bash
 npm run dev
@@ -96,9 +104,10 @@ Scripts de contrôle :
 ```bash
 npm run typecheck
 npm run build
+npm test
 ```
 
-Au premier appel d’une route connectée à MongoDB, `ensureAdminExists()` crée `Administrateur` s’il n’existe pas. Les appels suivants restent sans effet. Un index unique partiel `one_admin_only` garantit l’unicité même en cas de démarrages simultanés.
+Au premier appel d’une route connectée à MongoDB, `ensureInitialUsersExist()` crée `Administrateur` et `Utilisateur` s’ils n’existent pas. Les appels suivants restent sans effet. Un index unique partiel `one_admin_only` garantit l’unicité ADMIN. Une clé système réservée rend uniquement le seed USER idempotent; elle n’impose aucune unicité au rôle USER.
 
 ### MongoDB Atlas
 
@@ -170,6 +179,9 @@ npm run lint
    - `JWT_SECRET` (32 caractères minimum, valeur aléatoire);
    - `JWT_EXPIRES_IN=7d`;
    - `MOCK_AUTH_ENABLED=true` pour le test uniquement.
+   - `GEMINI_API_KEYS` avec une ou plusieurs clés séparées par des virgules;
+   - `GEMINI_MODEL=gemini-3.5-flash`;
+   - `GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite`.
 
 6. Dans **Storage**, créer ou connecter le Vercel Blob Store public au projet backend et activer la connexion OIDC.
 7. Déployer.
@@ -206,6 +218,22 @@ Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones co
 3. Sur B, recharger l’écran de connexion ou la liste Produits.
 4. Vérifier que Boutique X et le produit apparaissent. Seul le JWT est local; Users, Shops et Products viennent d’Atlas.
 
+### USER et recherche visuelle
+
+1. Se déconnecter, choisir **Utilisateur**, puis autoriser ou refuser la localisation au premier plan.
+2. Prendre une photo ou choisir une image de produit, la recadrer et indiquer éventuellement une taille.
+3. Lancer la recherche. Seuls les produits au-dessus du seuil de correspondance sont retenus; la proximité ne peut pas faire remonter un mauvais produit.
+4. Vérifier le nom, l’adresse, le téléphone, la distance éventuelle et utiliser **Appeler la boutique**.
+5. Confirmer que `stock = 0` n’est pas recommandé et que l’interface demande toujours une confirmation téléphonique.
+
+La recherche est `POST /api/ai/product-search`, protégée par JWT et réservée au rôle USER. L’image envoyée est analysée depuis la mémoire de la Function puis abandonnée. Le catalogue n’est jamais envoyé à Gemini : le service reçoit une seule image et le matching avec MongoDB reste local au backend.
+
+```text
+Photo USER → Gemini → VisualProductProfile → matching MongoDB → boutiques → distance
+```
+
+`expo-location` demande uniquement l’autorisation au premier plan. Un refus ou un échec de géocodage n’empêche ni la recherche ni l’enregistrement d’une boutique; seule la distance reste alors indisponible.
+
 ## Sécurité du mock login
 
 > **ATTENTION :** `MOCK_AUTH_ENABLED=true` permet de sélectionner un compte sans mot de passe. Ce mode sert uniquement au développement et à la démonstration; ce n’est pas une authentification sûre pour une production publique.
@@ -213,5 +241,7 @@ Le PC n’a ensuite plus besoin d’exécuter l’API : tous les téléphones co
 Passer `MOCK_AUTH_ENABLED=false` masque complètement `/api/auth/options` et `/api/auth/mock-login`. Une future authentification email/mot de passe ou OAuth pourra remplacer ce module sans modifier les contrôles métier des boutiques et produits.
 
 ## Ressources externes nécessaires aux tests réels
+
+Les tests automatisés couvrent le matching, la marque invisible, le filtrage avant distance, la taille, le stock zéro, Haversine, les permissions USER et les pannes/rate limits/réponses invalides du pool Gemini avec des doubles de test. Un test réel de Gemini nécessite vos propres clés et peut consommer du quota; il n’est volontairement pas lancé par `npm test`.
 
 Les tests MongoDB, seed concurrent, accès cross-shop et partage entre téléphones nécessitent vos propres valeurs `MONGODB_URI`, `JWT_SECRET` et un déploiement Vercel. Les tests upload/remplacement/suppression Blob nécessitent un Blob Store connecté au projet par OIDC. Ne placez jamais de secrets dans Git ou dans l’application mobile.

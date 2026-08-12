@@ -1,3737 +1,3474 @@
-TU DOIS CRÉER LE PROJET COMPLET ET FONCTIONNEL.
+# MODIFICATION DU PROJET EXISTANT — USER + RECHERCHE VISUELLE IA
 
-Tu agis comme un développeur senior spécialisé en :
+Le projet existe déjà et fonctionne.
 
-- React Native
-- Expo
-- Expo Router
-- TypeScript
-- Node.js
-- Express
-- MongoDB Atlas
-- Mongoose
-- Vercel
-- Vercel Blob
-- API REST
-- sécurité backend
-- architecture mobile évolutive
+**NE RECRÉE PAS LE PROJET.**
 
-============================================================
-0. OBJECTIF GÉNÉRAL
-============================================================
+Projet actuel :
 
-Je veux créer une application mobile de gestion de boutiques et de produits.
+```text
+boutique-manager/
+├── mobile/
+└── server/
+```
 
-L'application doit être :
+Stack existante :
 
-- réellement fonctionnelle ;
-- testable avec Expo Go ;
-- utilisable depuis plusieurs téléphones ;
-- connectée à un backend hébergeable sur Vercel ;
-- connectée à MongoDB Atlas ;
-- capable de stocker les images des produits dans Vercel Blob ;
-- conçue pour être améliorée plus tard sans devoir refaire toute l'architecture.
+* React Native
+* Expo
+* Expo Router
+* TypeScript
+* Express
+* MongoDB Atlas
+* Vercel
+* Vercel Blob
+* JWT
+* SecureStore
+* rôles ADMIN et BOUTIQUE
+* CRUD boutiques
+* CRUD produits
 
-Architecture finale obligatoire :
+Le backend est déjà conçu pour être hébergé sur Vercel.
 
-APPLICATION REACT NATIVE
-installée/testée sur les téléphones
-            |
-            | HTTPS REST API
-            v
-BACKEND NODE.JS + EXPRESS
-hébergé sur Vercel
-            |
-            +----------------------+
-            |                      |
-            v                      v
-      MongoDB Atlas           Vercel Blob
-      données                 images
-      utilisateurs
-      boutiques
-      produits
+Les produits et utilisateurs sont stockés dans MongoDB Atlas.
 
-Tous les téléphones doivent utiliser le même backend.
+Les images produits sont stockées dans Vercel Blob.
 
-Ainsi :
+Tout cela fonctionne actuellement.
 
-Téléphone A
-Téléphone B
-Téléphone C
-     |
-     v
-Même backend Vercel
-     |
-     v
-Même MongoDB Atlas
+Tu dois **modifier proprement le projet existant** pour ajouter les fonctionnalités décrites ci-dessous sans casser ce qui fonctionne déjà.
 
-Ils doivent donc retrouver les mêmes :
+---
 
-- utilisateurs ;
-- boutiques ;
-- produits ;
-- modifications ;
-- suppressions ;
-- images.
+# 1. OBJECTIF DE CETTE V1
 
-============================================================
-1. RÈGLE PRINCIPALE POUR L'IA
-============================================================
+Ajouter un troisième rôle :
 
-TU DOIS CRÉER LES FICHIERS.
+```text
+USER
+```
 
-Ne te contente PAS :
+L’écran de connexion doit maintenant proposer :
 
-- de m'expliquer comment faire ;
-- de donner du pseudo-code ;
-- de donner seulement quelques exemples ;
-- de mettre des TODO ;
-- de dire à compléter ;
-- de simuler les données ;
-- de supprimer une fonctionnalité parce qu'elle est difficile.
+```text
+[ Administrateur ]
 
-Tu dois réellement implémenter le MVP.
+[ Boutique ]
+
+[ Utilisateur ]
+```
+
+L’utilisateur normal doit pouvoir :
+
+1. se connecter ;
+2. arriver sur son Accueil ;
+3. prendre une photo avec son téléphone OU sélectionner une image/capture d’écran depuis sa galerie ;
+4. envoyer cette image au backend ;
+5. faire analyser l’image par Gemini ;
+6. obtenir une description structurée extrêmement précise du produit visible ;
+7. comparer cette description aux produits réellement enregistrés par les boutiques ;
+8. retrouver les produits les plus similaires ;
+9. afficher les boutiques qui possèdent probablement ce produit ;
+10. afficher :
+
+* nom de la boutique ;
+* adresse exacte ;
+* numéro de téléphone ;
+* produit correspondant ;
+* couleurs ;
+* tailles déclarées ;
+* stock déclaré ;
+* prix si disponible ;
+* distance depuis l’utilisateur si la localisation est disponible ;
+
+11. privilégier la boutique la plus proche **parmi les boutiques possédant réellement un produit suffisamment similaire**.
+
+IMPORTANT :
+
+La proximité ne doit JAMAIS permettre à un mauvais produit de dépasser un meilleur produit.
+
+Il faut d’abord déterminer quels produits correspondent suffisamment à la photo.
+
+Ensuite seulement :
+
+trier les boutiques correspondantes par distance.
+
+---
+
+# 2. NE PAS CASSER L’APPLICATION ACTUELLE
 
 Avant toute modification :
 
-1. inspecter le dossier courant ;
-2. inspecter les fichiers existants ;
-3. conserver les configurations utiles ;
-4. éviter de recréer inutilement un projet existant ;
-5. garder TypeScript ;
-6. ne pas casser Expo.
+1. inspecter réellement le projet ;
+2. inspecter les modèles MongoDB ;
+3. inspecter AuthContext ;
+4. inspecter Expo Router ;
+5. inspecter les middlewares ;
+6. inspecter ProductForm ;
+7. inspecter les services actuels ;
+8. inspecter les routes API ;
+9. inspecter les variables d’environnement ;
+10. inspecter les tests et scripts existants.
 
-Après implémentation :
+NE PAS :
 
-1. vérifier les imports ;
-2. vérifier TypeScript ;
-3. vérifier les routes Expo ;
-4. vérifier les routes API ;
-5. vérifier les droits ADMIN/BOUTIQUE ;
-6. vérifier MongoDB ;
-7. vérifier Vercel Blob ;
-8. vérifier les images ;
-9. vérifier les erreurs ;
-10. vérifier qu'aucun secret n'existe dans mobile/.
+* recréer boutique-manager ;
+* supprimer MongoDB Atlas ;
+* remplacer Vercel ;
+* remplacer Vercel Blob ;
+* refaire l’authentification ;
+* casser ADMIN ;
+* casser BOUTIQUE ;
+* dupliquer ProductForm ;
+* changer arbitrairement les endpoints fonctionnels.
 
-Corriger les problèmes AVANT de considérer le projet terminé.
+Le développement demandé ici est une **évolution** de l’application existante.
 
-============================================================
-2. STRUCTURE GLOBALE
-============================================================
+---
 
-Créer :
+# 3. NOUVEAU RÔLE USER
 
-boutique-manager/
-├── mobile/
-├── server/
-├── README.md
-└── .gitignore
+Modifier la définition centrale des rôles.
 
-mobile/
-=
-application React Native Expo
+Avant :
 
-server/
-=
-backend Express déployable sur Vercel
-
-IMPORTANT :
-
-Le backend et l'application mobile sont deux applications distinctes.
-
-Le téléphone ne doit JAMAIS accéder directement à MongoDB Atlas.
-
-Architecture interdite :
-
-React Native
-    |
-    v
-MongoDB Atlas
-
-Architecture obligatoire :
-
-React Native
-    |
-    v
-Express API
-    |
-    v
-MongoDB Atlas
-
-============================================================
-3. TECHNOLOGIES OBLIGATOIRES
-============================================================
-
-MOBILE :
-
-- React Native
-- Expo
-- TypeScript
-- Expo Router
-- expo-image-picker
-- expo-secure-store
-
-BACKEND :
-
-- Node.js
-- TypeScript
-- Express
-- Mongoose
-- MongoDB Atlas
-- jsonwebtoken
-- validation avec Zod ou solution équivalente propre
-- multer avec stockage mémoire uniquement
-- @vercel/blob
-
-Ne pas utiliser :
-
-- Firebase
-- Supabase
-- SQLite comme base principale
-- React Web à la place de React Native
-- React Native CLI à la place d'Expo
-
-============================================================
-4. COMPATIBILITÉ EXPO
-============================================================
-
-Créer l'application avec :
-
-create-expo-app
-
-Utiliser les versions actuelles compatibles avec le SDK Expo du projet.
-
-Ne pas choisir arbitrairement des versions anciennes.
-
-Pour les bibliothèques Expo utiliser :
-
-npx expo install
-
-Exemple :
-
-npx expo install expo-image-picker expo-secure-store
-
-L'application doit être testable avec Expo Go.
-
-Si une dépendance proposée empêche Expo Go de fonctionner alors qu'elle n'est pas indispensable :
-
-ne pas l'utiliser.
-
-============================================================
-5. UTILISATEURS
-============================================================
-
-Pour le MVP, seulement deux rôles existent :
-
+```text
 ADMIN
 BOUTIQUE
+```
 
-Définir les rôles de manière centralisée.
+Après :
 
-Par exemple :
+```text
+ADMIN
+BOUTIQUE
+USER
+```
 
-export const USER_ROLES = {
-  ADMIN: 'ADMIN',
-  BOUTIQUE: 'BOUTIQUE',
-} as const;
+Mettre à jour :
 
-Ne pas disperser des strings ADMIN/BOUTIQUE partout dans le code.
+* backend ;
+* frontend ;
+* types ;
+* middlewares ;
+* navigation ;
+* auth options ;
+* AuthContext.
 
-Préparer l'architecture pour ajouter plus tard :
+Ne jamais disperser des strings `"USER"` partout.
 
-- employés ;
-- managers ;
-- vendeurs ;
-- clients ;
-- autres rôles.
+Utiliser la constante centrale déjà existante.
 
-Mais NE PAS les implémenter maintenant.
+---
 
-============================================================
-6. MODÈLE USER
-============================================================
+# 4. COMPTE USER INITIAL
 
-Créer collection User.
-
-Champs :
-
-_id
-
-displayName
-string
-obligatoire
-
-role
-ADMIN | BOUTIQUE
-
-shopId
-ObjectId | null
-
-isActive
-boolean
-default true
-
-createdAt
-
-updatedAt
-
-ADMIN :
-
-role = ADMIN
-shopId = null
-
-BOUTIQUE :
-
-role = BOUTIQUE
-shopId = ObjectId de Shop
-
-============================================================
-7. ADMIN UNIQUE
-============================================================
-
-Il doit exister exactement UN ADMIN.
-
-Il est créé automatiquement si aucun admin n'existe.
-
-Informations initiales :
-
-displayName = Administrateur
-role = ADMIN
-shopId = null
-isActive = true
-
-Le seed doit être IDEMPOTENT.
-
-Premier démarrage :
-
-0 admin
-=> création de l'admin.
-
-Démarrage suivant :
-
-1 admin
-=> ne rien créer.
-
-Plusieurs démarrages simultanés :
-=> ne doivent jamais créer plusieurs admins.
-
-Ajouter une contrainte MongoDB réelle empêchant plusieurs documents ADMIN.
-
-Par exemple :
-
-index unique partiel appliqué uniquement lorsque :
-
-role = ADMIN
-
-Il ne doit exister aucune route :
-
-POST /admins
-
-L'admin :
-
-- ne peut pas être créé depuis l'application ;
-- ne peut pas être supprimé ;
-- ne peut pas être transformé en boutique.
-
-============================================================
-8. MODÈLE SHOP
-============================================================
-
-Créer collection Shop.
-
-Champs :
-
-_id
-
-name
-string
-obligatoire
-
-phone
-string
-obligatoire
-
-address
-string
-obligatoire
-
-createdAt
-
-updatedAt
-
-Pour l'instant :
-
-address
-
-reste une simple chaîne.
+Pour cette V1 de test, créer automatiquement un compte USER normal.
 
 Exemple :
 
-Alger Centre, Alger
+```text
+displayName = "Utilisateur"
+role = USER
+shopId = null
+isActive = true
+```
 
-Pas encore de latitude/longitude.
+Le seed doit être idempotent.
 
-============================================================
-9. RELATION USER / SHOP
-============================================================
+Si aucun USER n’existe :
 
-Séparer obligatoirement :
+```text
+=> créer Utilisateur
+```
 
-User
+Si un USER existe :
 
-et
+```text
+=> ne rien recréer
+```
 
-Shop.
+Contrairement à ADMIN, ne pas créer de contrainte empêchant plusieurs USER.
 
-Une boutique n'est pas directement un User.
+Pourquoi :
 
-Pour ce MVP :
+plus tard plusieurs utilisateurs normaux devront pouvoir exister.
 
-1 Shop
-=
-1 User BOUTIQUE
+Pour l’instant :
 
-mais cette architecture doit permettre plus tard :
+un seul USER est automatiquement créé.
 
-1 Shop
-=
-plusieurs Users.
+---
 
-Quand l'admin crée :
+# 5. AUTH OPTIONS
 
-Nike Alger
+Modifier :
 
-le backend crée :
-
-Shop
-{
-  name: Nike Alger,
-  phone: ...,
-  address: ...
-}
-
-puis :
-
-User
-{
-  displayName: Nike Alger,
-  role: BOUTIQUE,
-  shopId: shop._id,
-  isActive: true
-}
-
-Cette logique doit être dans :
-
-shop.service.ts
-
-et non copiée dans plusieurs contrôleurs.
-
-Si la création Shop réussit mais User échoue :
-
-ne pas laisser un Shop orphelin.
-
-Faire un rollback propre ou utiliser une transaction MongoDB lorsque la configuration le permet.
-
-============================================================
-10. AUTHENTIFICATION TEMPORAIRE
-============================================================
-
-IMPORTANT :
-
-Pour ce MVP, je veux une authentification DE TEST.
-
-Il n'existe PAS encore :
-
-- email ;
-- mot de passe ;
-- inscription ;
-- OAuth ;
-- récupération mot de passe.
-
-Je veux pouvoir sélectionner directement un utilisateur.
-
-Mais construire cette fonctionnalité comme un module temporaire pouvant être remplacé plus tard.
-
-Variable backend :
-
-MOCK_AUTH_ENABLED=true
-
-IMPORTANT :
-
-Ce mode n'est PAS une authentification sécurisée de production.
-
-Il sert uniquement au développement/démonstration.
-
-Lorsque plus tard une vraie authentification sera ajoutée :
-
-MOCK_AUTH_ENABLED=false
-
-doit désactiver complètement les endpoints de mock login.
-
-============================================================
-11. GET AUTH OPTIONS
-============================================================
-
-Créer :
-
+```text
 GET /api/auth/options
+```
 
-Accessible uniquement si :
+Pour retourner maintenant :
 
-MOCK_AUTH_ENABLED=true
-
-Réponse :
-
+```json
 {
-  success: true,
-  data: {
-    admin: {
-      userId: ...,
-      displayName: Administrateur
+  "success": true,
+  "data": {
+    "admin": {
+      "userId": "...",
+      "displayName": "Administrateur"
     },
-    boutiques: [
+    "boutiques": [],
+    "users": [
       {
-        userId: ...,
-        displayName: Nike Alger,
-        shopId: ...,
-        shopName: Nike Alger
+        "userId": "...",
+        "displayName": "Utilisateur"
       }
     ]
   }
 }
+```
 
-Si MOCK_AUTH_ENABLED=false :
+---
 
-ne pas exposer cette liste.
+# 6. ÉCRAN LOGIN
 
-Retourner par exemple :
+Afficher maintenant exactement :
 
-404
-
-ou réponse contrôlée cohérente.
-
-============================================================
-12. MOCK LOGIN
-============================================================
-
-Créer :
-
-POST /api/auth/mock-login
-
-body :
-
-{
-  userId: ...
-}
-
-Backend :
-
-1. vérifier MOCK_AUTH_ENABLED ;
-2. vérifier ObjectId ;
-3. chercher User ;
-4. vérifier user existe ;
-5. vérifier isActive ;
-6. créer JWT ;
-7. retourner session.
-
-Exemple :
-
-{
-  success: true,
-  data: {
-    token: ...,
-    user: {
-      id: ...,
-      displayName: ...,
-      role: ADMIN,
-      shopId: null
-    }
-  }
-}
-
-Le téléphone ne doit PAS envoyer :
-
-role
-
-pour décider des droits.
-
-Le rôle provenant du téléphone ne doit JAMAIS être considéré comme fiable.
-
-============================================================
-13. JWT
-============================================================
-
-Créer :
-
-JWT_SECRET
-
-uniquement côté backend.
-
-Ajouter une expiration configurable :
-
-JWT_EXPIRES_IN=7d
-
-Le token doit essentiellement identifier :
-
-userId
-
-Pour CHAQUE requête protégée :
-
-1. lire Bearer token ;
-2. vérifier signature JWT ;
-3. extraire userId ;
-4. charger User depuis MongoDB ;
-5. vérifier User existe ;
-6. vérifier isActive ;
-7. utiliser le role provenant de MongoDB ;
-8. utiliser shopId provenant de MongoDB.
-
-NE PAS faire confiance à :
-
-role du token
-
-si cela peut être évité.
-
-NE PAS faire confiance à :
-
-shopId envoyé par le client.
-
-Ainsi :
-
-si l'admin supprime une boutique,
-
-un ancien token de cette boutique devient inutilisable dès la requête suivante.
-
-============================================================
-14. GET AUTH ME
-============================================================
-
-Créer :
-
-GET /api/auth/me
-
-Authentification requise.
-
-Retour :
-
-{
-  success: true,
-  data: {
-    user: {
-      id: ...,
-      displayName: ...,
-      role: ...,
-      shopId: ...
-    }
-  }
-}
-
-L'application utilisera cela au démarrage pour restaurer une session.
-
-============================================================
-15. LOGIN MOBILE
-============================================================
-
-Sans session :
-
-afficher écran :
-
+```text
 Connexion
-
-Avec exactement les choix principaux :
 
 [ Administrateur ]
 
 [ Boutique ]
 
-ADMIN :
-
-clic sur Administrateur
-
-=> récupérer l'admin depuis auth/options
-
-=> mock-login
-
-=> connexion.
-
-BOUTIQUE :
-
-Cas zéro boutique :
-
-Afficher :
-
-Aucune boutique disponible.
-
-Cas une boutique :
-
-connecter directement cette boutique.
-
-Cas plusieurs boutiques :
-
-afficher :
-
-Choisir une boutique
-
-[ Nike Alger ]
-[ Adidas Oran ]
-[ Boutique X ]
-
-et :
-
-[ Retour ]
-
-============================================================
-16. STOCKAGE SESSION MOBILE
-============================================================
-
-Utiliser :
-
-expo-secure-store
-
-Stocker le JWT.
-
-Créer :
-
-AuthContext
-
-avec :
-
-user
-token
-isLoading
-isAuthenticated
-
-login(userId)
-
-logout()
-
-restoreSession()
-
-Au démarrage :
-
-SecureStore
-   |
-token ?
-   |
-   +-- NON -> login
-   |
-   +-- OUI
-          |
-          v
-     GET /auth/me
-          |
-        valide ?
-       /            oui       non
-      |         |
-session      supprimer token
-restaurée    afficher login
-
-============================================================
-17. NAVIGATION ADMIN
-============================================================
-
-Après connexion ADMIN :
-
-Tabs :
-
-Accueil
-Users
-
-Exactement ces deux onglets pour le MVP.
-
-Préparer le code afin de pouvoir ajouter plus tard d'autres Tabs.
-
-Accueil ADMIN :
-
-titre :
-
-Accueil
-
-Page volontairement pratiquement vide.
-
-Ne pas inventer :
-
-- statistiques ;
-- graphiques ;
-- chiffre d'affaires ;
-- notifications.
-
-Header :
-
-bouton clair :
-
-Déconnexion
-
-============================================================
-18. NAVIGATION BOUTIQUE
-============================================================
-
-Après connexion BOUTIQUE :
-
-Tabs :
-
-Accueil
-Produits
-
-Accueil :
-
-titre :
-
-Accueil
-
-Page volontairement vide.
-
-Header :
-
-Déconnexion
-
-============================================================
-19. PROTECTION NAVIGATION MOBILE
-============================================================
-
-Utiliser Expo Router.
-
-Utilisateur non connecté :
-
-=> login.
+[ Utilisateur ]
+```
 
 ADMIN :
 
-=> navigation ADMIN.
+fonctionnement actuel inchangé.
 
 BOUTIQUE :
 
-=> navigation BOUTIQUE.
+fonctionnement actuel inchangé.
 
-Si BOUTIQUE tente d'ouvrir une URL/route admin :
+USER :
 
-=> redirection.
+si 1 USER :
 
-Si ADMIN tente une route boutique :
+connexion directement.
 
-=> redirection appropriée.
+Si plus tard plusieurs USER existent :
 
-IMPORTANT :
+afficher une sélection comme pour les boutiques.
 
-Cette protection frontend sert à l'expérience utilisateur.
+Préparer cette possibilité maintenant.
 
-La VRAIE sécurité doit rester dans le backend.
+---
 
-============================================================
-20. PAGE ADMIN USERS
-============================================================
+# 7. NAVIGATION USER
 
-ADMIN -> Users
+Créer un nouveau groupe Expo Router propre :
 
-Afficher tous les utilisateurs.
+```text
+(user)/
+```
 
-Admin :
+Préparer une navigation extensible.
 
-Administrateur
-ADMIN
+Pour cette V1 :
 
-Aucun bouton supprimer.
+```text
+USER
+└── Accueil
+```
 
-Pour chaque User BOUTIQUE :
+Même s’il n’existe qu’un écran aujourd’hui, organiser le code afin de pouvoir ajouter plus tard :
 
-afficher :
+```text
+Accueil
+Favoris
+Historique
+Profil
+etc.
+```
 
-Nom boutique
+Ne pas implémenter ces écrans maintenant.
 
-Téléphone
+---
 
-Adresse
+# 8. ACCUEIL USER
 
-Rôle :
-BOUTIQUE
+Créer une interface simple.
 
-Actions :
+Titre :
 
-[ Gérer les produits ]
+```text
+Trouver un produit
+```
 
-[ Supprimer ]
+Texte :
 
-En haut :
+```text
+Prenez une photo ou sélectionnez une image du produit que vous recherchez.
+```
 
-[ + Ajouter une boutique ]
+Deux gros boutons :
 
-============================================================
-21. CRÉATION BOUTIQUE
-============================================================
+```text
+[ Prendre une photo ]
 
-Écran :
+[ Choisir une image ]
+```
 
-Ajouter une boutique
+Le deuxième permet notamment de sélectionner une capture d’écran.
 
-Champs :
+Utiliser expo-image-picker déjà présent si possible.
 
-Nom de la boutique *
+Permettre :
 
-Numéro de téléphone *
+* caméra ;
+* galerie.
 
-Adresse *
+Afficher ensuite un aperçu de l’image.
 
-Validation frontend ET backend.
+Puis :
 
-name :
+```text
+[ Rechercher ce produit ]
+```
 
-trim
-non vide
+Ajouter également :
 
-phone :
+```text
+Taille recherchée (optionnel)
+```
 
-trim
-non vide
+Exemples :
 
-address :
+```text
+M
+L
+42
+43
+```
 
-trim
-non vide
+Ce champ est optionnel.
 
-Bouton :
+---
 
-Créer
+# 9. RECADRAGE
 
-Endpoint :
+Lors de la sélection d’une image :
 
-POST /api/shops
+permettre si possible le recadrage.
 
-ADMIN uniquement.
-
-Body :
-
-{
-  name: ...,
-  phone: ...,
-  address: ...
-}
-
-Après succès :
-
-retour Users
-
-et rafraîchir automatiquement.
-
-Empêcher double clic pendant la création.
-
-============================================================
-22. SUPPRESSION BOUTIQUE
-============================================================
-
-ADMIN uniquement.
-
-Bouton :
-
-Supprimer
-
-Confirmation :
-
-Supprimer cette boutique et tous ses produits ?
-
-Boutons :
-
-Annuler
-
-Supprimer
-
-Endpoint :
-
-DELETE /api/shops/:shopId
-
-La suppression doit supprimer :
-
-- Shop ;
-- Users appartenant au Shop ;
-- Products appartenant au Shop.
-
-Les images associées dans Vercel Blob doivent ensuite être supprimées.
-
-Avant suppression DB :
-
-récupérer les références nécessaires aux images.
-
-Effectuer les suppressions MongoDB de manière cohérente.
-
-Après succès MongoDB :
-
-essayer de supprimer les blobs.
-
-Si une suppression Blob échoue :
-
-- ne pas faire planter le serveur ;
-- logger clairement l'erreur ;
-- ne pas prétendre que le Blob a été supprimé.
-
-Après suppression :
-
-rafraîchir Users.
-
-============================================================
-23. MODÈLE PRODUCT
-============================================================
-
-Créer collection Product.
-
-Champs :
-
-_id
-
-shopId
-ObjectId
-obligatoire
-référence Shop
-
-internalCode
-string
-obligatoire
-unique
-généré côté backend
-non modifiable
-
-name
-string
-obligatoire
-
-type
-string
-obligatoire
-
-brand
-string
-obligatoire
-
-model
-string optionnel
-
-reference
-string optionnel
-
-sku
-string optionnel
-
-barcode
-string optionnel
-
-colors
-string[]
-minimum 1
-
-sizes
-string[]
-peut être vide
-
-material
-string optionnel
-
-targetAudience
-string optionnel
-
-description
-string optionnel
-
-price
-number optionnel
->= 0
-
-currency
-string optionnel
-
-stock
-number integer optionnel
->= 0
-
-imageUrl
-string obligatoire
-
-imageStorageKey
-string obligatoire
-
-customAttributes
-tableau
-
-createdBy
-ObjectId User
-
-updatedBy
-ObjectId User
-
-createdAt
-
-updatedAt
-
-============================================================
-24. IMAGE URL / STORAGE KEY
-============================================================
-
-NE PAS utiliser :
-
-imagePath=/uploads/...
-
-Il n'existe PAS de dossier uploads persistant.
-
-Utiliser :
-
-imageUrl
-
-et
-
-imageStorageKey
-
-Exemple conceptuel :
-
-imageUrl =
-https://xxxxx.public.blob.vercel-storage.com/products/...
-
-imageStorageKey =
-products/...
-
-L'application mobile affiche directement :
-
-imageUrl
-
-Ne jamais reconstruire l'URL manuellement.
-
-============================================================
-25. ABSTRACTION DU STOCKAGE
-============================================================
-
-Je veux pouvoir remplacer Vercel Blob plus tard.
-
-Ne pas mettre directement des appels :
-
-put()
-del()
-
-dans tous les contrôleurs.
-
-Créer :
-
-storage.service.ts
-
-avec interface/logique du type :
-
-uploadProductImage(...)
-
-deleteProductImage(...)
-
-Le reste de l'application doit connaître seulement :
-
-imageUrl
-
-imageStorageKey
-
-Ainsi plus tard je pourrai remplacer Vercel Blob par :
-
-- S3 ;
-- Cloudinary ;
-- Supabase Storage ;
-- stockage personnel ;
-
-sans refaire ProductController.
-
-============================================================
-26. VERCEL BLOB
-============================================================
-
-Pour cette version :
-
-utiliser Vercel Blob.
-
-Installer :
-
-@vercel/blob
-
-Utiliser :
-
-BLOB_READ_WRITE_TOKEN
-
-UNIQUEMENT backend.
-
-Créer un Blob Store public pour les images produits.
-
-Le backend reçoit l'image puis l'envoie dans Vercel Blob.
-
-Utiliser des pathnames organisés.
+L’objectif est que l’utilisateur puisse isoler le produit.
 
 Exemple :
 
-products/{shopId}/{uuid}.jpg
+capture Instagram contenant :
 
-Ne jamais utiliser directement le nom du fichier fourni par l'utilisateur comme identifiant principal.
+* modèle humain ;
+* texte ;
+* chaussures ;
+* pantalon ;
+* pull.
 
-Générer un nom sûr.
+L’utilisateur doit pouvoir recadrer principalement sur le pull.
 
-Utiliser suffixe/aléatoire ou UUID pour éviter les collisions.
+Cela améliore la précision.
 
-============================================================
-27. LIMITE IMAGE VERCEL
-============================================================
+---
 
-IMPORTANT :
+# 10. COMPRESSION IMAGE USER
 
-Une requête Vercel Function ne doit pas recevoir de gros fichiers arbitraires.
+Une capture/photo moderne peut être très lourde.
 
-Pour ce MVP utiliser :
+Avant envoi au backend :
 
-MAX_PRODUCT_IMAGE_SIZE = 3 MiB
+utiliser si nécessaire :
 
-et PAS 5 MiB.
+```text
+expo-image-manipulator
+```
 
-Cela laisse une marge pour :
+pour :
 
-- multipart/form-data ;
-- JSON ;
-- headers ;
-- autres champs de la requête.
+* redimensionner raisonnablement ;
+* compresser ;
+* conserver suffisamment de détails visuels.
 
-Frontend :
+Objectif recommandé :
 
-refuser si image clairement > 3 MiB lorsque la taille est disponible.
+```text
+dimension maximale ≈ 1600 px
+JPEG qualité ≈ 0.8
+```
 
-Backend :
+Ne pas dégrader l’image excessivement.
 
-TOUJOURS appliquer la vraie limite.
+La requête envoyée au backend doit rester raisonnablement petite.
 
-Multer :
+---
 
-memoryStorage()
+# 11. IMAGE USER NON STOCKÉE
 
-limits.fileSize = 3 MiB
+IMPORTANT POUR CETTE V1 :
 
-NE PAS utiliser :
+les photos/captures envoyées par USER pour rechercher un produit :
 
-diskStorage()
+**NE DOIVENT PAS être enregistrées dans MongoDB.**
 
-NE PAS écrire l'image dans :
-
-/uploads
-
-NE PAS utiliser le filesystem Vercel comme stockage persistant.
-
-============================================================
-28. FORMATS IMAGES
-============================================================
-
-Formats acceptés :
-
-JPEG
-PNG
-WEBP
-
-MIME types :
-
-image/jpeg
-image/png
-image/webp
-
-Une seule image principale par produit pour le MVP.
-
-Image obligatoire à la création.
-
-Image optionnelle lors de la modification.
-
-============================================================
-29. IMAGE CREATION PRODUCT
-============================================================
-
-Flux obligatoire :
-
-Téléphone sélectionne image
-
-        ↓
-
-POST multipart vers Backend
-
-        ↓
-
-Backend valide fichier
-
-        ↓
-
-Backend upload vers Vercel Blob
-
-        ↓
-
-Vercel Blob retourne URL/pathname
-
-        ↓
-
-Backend crée Product MongoDB
-
-Si upload Blob réussit mais création MongoDB échoue :
-
-supprimer le Blob nouvellement créé afin d'éviter un fichier orphelin.
-
-============================================================
-30. MODIFICATION IMAGE
-============================================================
-
-PATCH Product.
-
-Si aucune nouvelle image :
-
-conserver :
-
-imageUrl
-imageStorageKey
-
-actuels.
-
-Si nouvelle image :
-
-1. valider nouvelle image ;
-2. uploader nouvelle image dans Blob ;
-3. tenter modification MongoDB ;
-4. si MongoDB réussit :
-   supprimer ancien Blob ;
-5. si MongoDB échoue :
-   supprimer nouveau Blob ;
-   conserver ancien Product + ancienne image.
-
-NE JAMAIS supprimer l'ancienne image AVANT que MongoDB ait accepté la nouvelle référence.
-
-============================================================
-31. SUPPRESSION PRODUIT
-============================================================
-
-DELETE Product.
+**NE DOIVENT PAS être enregistrées dans Vercel Blob.**
 
 Flux :
 
-1. vérifier autorisation ;
-2. récupérer Product ;
-3. conserver imageStorageKey/imageUrl ;
-4. supprimer Product de MongoDB ;
-5. essayer de supprimer Blob ;
-6. si Blob manque déjà :
-   ne pas considérer cela comme erreur critique ;
-7. si Blob delete échoue :
-   logger l'erreur.
-
-Réponse API cohérente.
-
-============================================================
-32. INTERNAL CODE
-============================================================
-
-Chaque produit doit avoir un identifiant métier généré automatiquement.
-
-Exemple :
-
-PRD-a71b...
+```text
+Téléphone
+   ↓
+Backend en mémoire
+   ↓
+Gemini
+   ↓
+Analyse
+   ↓
+Image supprimée de la mémoire
+```
 
 Utiliser :
 
-crypto.randomUUID()
+```text
+multer.memoryStorage()
+```
 
-ou solution Node standard équivalente.
+pour cette route.
 
-Exemple :
+Aucun historique des images USER pour cette V1.
 
+---
 
+# 12. API GEMINI UNIQUEMENT BACKEND
 
-Unique index MongoDB.
+Les clés Gemini sont SECRETES.
 
-L'utilisateur :
+INTERDIT :
 
-- ne peut pas le choisir ;
-- ne peut pas le modifier.
+```text
+GEMINI_API_KEY
+GEMINI_API_KEYS
+```
 
-Même si deux produits ont exactement :
+dans :
 
-même nom
-même marque
-même modèle
-même couleur
+```text
+mobile/
+```
 
-ils restent distincts.
+Toutes les requêtes Gemini passent par :
 
-============================================================
-33. CUSTOM ATTRIBUTES
-============================================================
+```text
+Backend Vercel
+```
 
-customAttributes :
+Architecture :
 
-[
-  {
-    key: Coupe,
-    value: Slim
-  },
-  {
-    key: Semelle,
-    value: Caoutchouc
-  }
-]
+```text
+USER téléphone
+      ↓
+Backend Vercel
+      ↓
+Gemini API
+```
 
-Obligatoire dans l'architecture.
+Jamais :
 
-Pourquoi :
+```text
+Téléphone
+      ↓
+Gemini directement
+```
 
-les caractéristiques dépendent du produit.
+---
 
-Chaussure :
+# 13. VARIABLES GEMINI
 
-pointure
-semelle
-hauteur
+Ajouter côté backend :
 
-Pantalon :
+```env
+GEMINI_API_KEYS=
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
+```
 
-coupe
-longueur
-matière
+`GEMINI_API_KEYS` accepte une ou plusieurs clés séparées par des virgules.
 
-Téléphone :
+Exemple conceptuel :
 
-RAM
-stockage
+```env
+GEMINI_API_KEYS=key1,key2,key3
+```
 
-Ne pas créer un schema MongoDB différent pour chaque catégorie.
+Ne jamais mettre de vraie clé dans :
 
-============================================================
-34. TYPE PRODUIT
-============================================================
+```text
+.env.example
+Git
+README
+mobile/
+```
 
-type :
+`.env.example` :
 
-string
+```env
+GEMINI_API_KEYS=YOUR_GEMINI_API_KEY
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite
+```
 
-Pas enum MongoDB fermé.
+---
 
-Frontend propose :
+# 14. IMPORTANT SUR LES PLUSIEURS CLÉS GEMINI
 
-Pantalon
+Implémenter proprement un pool de clés.
 
-Chaussure
+Mais NE PAS supposer :
 
-T-shirt
+```text
+5 clés = 5 fois plus de quota
+```
 
-Veste
+Les clés peuvent partager le quota de leur projet.
 
-Robe
+Le système multi-clés sert principalement à :
 
-Sac
+* clé invalide ;
+* clé désactivée ;
+* erreur d’authentification spécifique ;
+* résilience ;
+* configuration avec plusieurs clés autorisées.
 
-Accessoire
+Comportement :
 
-Autre
+```text
+key1
+ ↓ erreur exploitable
+key2
+ ↓
+key3
+ ↓
+...
+```
 
-Si Autre :
+Ne jamais créer une boucle infinie.
 
-champ texte.
+Chaque clé doit être essayée au maximum une fois par analyse.
 
-Backend stocke finalement une simple string validée.
+---
 
-============================================================
-35. COULEURS
-============================================================
+# 15. RATE LIMIT GEMINI
 
-Frontend :
+Si Gemini retourne :
 
-champ simple.
+```text
+429
+RESOURCE_EXHAUSTED
+```
 
-Exemple saisie :
+gérer proprement.
 
-Noir, Blanc, Rouge
+Ne jamais crasher.
 
-Conversion :
+Essayer éventuellement :
 
-[
- Noir,
- Blanc,
- Rouge
-]
+* clé suivante configurée ;
+* modèle fallback configuré ;
 
-trim chaque valeur.
+avec un nombre d’essais strictement limité.
 
-Supprimer valeurs vides.
+Si toutes les possibilités échouent :
 
-Minimum :
+retourner quelque chose comme :
 
-1 couleur.
-
-============================================================
-36. TAILLES
-============================================================
-
-Même principe.
-
-Exemple :
-
-40, 41, 42
-
-devient :
-
-[
- 40,
- 41,
- 42
-]
-
-Peut être vide.
-
-============================================================
-37. FORMULAIRE PRODUIT
-============================================================
-
-Créer UN composant réutilisable :
-
-ProductForm
-
-NE PAS créer deux formulaires différents pour :
-
-ADMIN
-
-et
-
-BOUTIQUE.
-
-Sections :
-
-IMAGE
-
-- aperçu
-- Choisir une image
-
-IDENTIFICATION
-
-Nom *
-Type *
-Marque *
-Modèle
-Référence
-SKU
-Code-barres
-
-VARIANTES
-
-Couleurs *
-Tailles
-
-INFORMATIONS
-
-Matière
-Public cible
-Description
-
-PRIX / STOCK
-
-Prix
-Devise
-Stock
-
-CARACTÉRISTIQUES SUPPLÉMENTAIRES
-
-clé
-valeur
-
-[ + Ajouter ]
-
-Chaque attribut ajouté doit pouvoir être supprimé.
-
-Bouton :
-
-Créer le produit
-
-ou :
-
-Enregistrer les modifications
-
-============================================================
-38. PRODUITS BOUTIQUE
-============================================================
-
-BOUTIQUE -> Produits
-
-Afficher seulement ses propres Products.
-
-En haut :
-
-[ + Ajouter un produit ]
-
-Chaque ProductCard :
-
-image
-
-nom
-
-type
-
-marque
-
-couleurs
-
-référence si présente
-
-stock si présent
-
-Actions :
-
-[ Modifier ]
-
-[ Supprimer ]
-
-============================================================
-39. PRODUITS ADMIN
-============================================================
-
-ADMIN
-
-Users
-
--> choisir Nike Alger
-
--> Gérer les produits
-
-ouvrir écran :
-
-Produits - Nike Alger
-
-L'admin voit les EXACTS MÊMES documents Product que la boutique.
-
-Pas de copie.
-
-Pas de collection séparée admin.
-
-L'admin peut :
-
-- créer ;
-- modifier ;
-- supprimer ;
-
-les produits de cette boutique.
-
-============================================================
-40. ROUTES PRODUITS
-============================================================
-
-Créer :
-
-GET
-/api/shops/:shopId/products
-
-POST
-/api/shops/:shopId/products
-
-GET
-/api/shops/:shopId/products/:productId
-
-PATCH
-/api/shops/:shopId/products/:productId
-
-DELETE
-/api/shops/:shopId/products/:productId
-
-Authentification obligatoire.
-
-============================================================
-41. AUTORISATIONS PRODUITS
-============================================================
-
-ADMIN :
-
-n'importe quel Shop valide.
-
-BOUTIQUE :
-
-autorisé uniquement si :
-
-String(req.user.shopId)
-===
-String(req.params.shopId)
-
-Sinon :
-
-403.
-
-Pour Product précis :
-
-vérifier également :
-
-Product.shopId
-===
-shopId demandé.
-
-Ne jamais autoriser BOUTIQUE uniquement parce que Product ID existe.
-
-Exemple attaque :
-
-Adidas connecté
-
-envoie :
-
-/shops/ID_NIKE/products/...
-
-Résultat obligatoire :
-
-403.
-
-============================================================
-42. ROUTES SHOP / USERS
-============================================================
-
-Créer :
-
-GET /api/users
-
-ADMIN uniquement.
-
-POST /api/shops
-
-ADMIN uniquement.
-
-DELETE /api/shops/:shopId
-
-ADMIN uniquement.
-
-GET /api/users doit retourner les informations nécessaires à l'écran Users.
-
-Ne jamais retourner :
-
-JWT_SECRET
-
-MONGODB_URI
-
-BLOB_READ_WRITE_TOKEN
-
-ou toute credential.
-
-============================================================
-43. MULTIPART PRODUIT
-============================================================
-
-CREATE / UPDATE Product :
-
-multipart/form-data
-
-Champ :
-
-data
-
-contient :
-
-JSON.stringify(productData)
-
-Champ :
-
-image
-
-contient fichier image.
-
-Création :
-
-image obligatoire.
-
-Modification :
-
-image facultative.
-
-Mobile :
-
-utiliser FormData.
-
-IMPORTANT :
-
-NE PAS définir manuellement :
-
-Content-Type: multipart/form-data
-
-avec fetch.
-
-Laisser fetch générer la boundary.
-
-Ajouter seulement les headers nécessaires comme :
-
-Authorization: Bearer ...
-
-============================================================
-44. VALIDATION BACKEND PRODUIT
-============================================================
-
-Backend source de vérité.
-
-name :
-
-trim
-2 à 120 caractères
-
-type :
-
-trim
-1 à 60
-
-brand :
-
-trim
-1 à 80
-
-model :
-
-optionnel
-longueur raisonnable
-
-reference :
-
-optionnel
-
-sku :
-
-optionnel
-
-barcode :
-
-optionnel
-
-colors :
-
-tableau
-minimum 1
-strings non vides
-
-sizes :
-
-tableau
-
-material :
-
-optionnel
-
-targetAudience :
-
-optionnel
-
-description :
-
-optionnel
-max environ 2000
-
-price :
-
-optionnel
-number
->= 0
-
-currency :
-
-optionnel
-
-stock :
-
-optionnel
-integer
->= 0
-
-customAttributes :
-
-tableau
-
-chaque entrée :
-
-key non vide
-
-value non vide
-
-Ne jamais faire confiance uniquement aux validations frontend.
-
-============================================================
-45. OBJECTID
-============================================================
-
-Valider proprement tous :
-
-shopId
-
-productId
-
-userId
-
-avant utilisation.
-
-Un ObjectId mal formé ne doit jamais provoquer :
-
-500.
-
-Retour cohérent :
-
-400
-
-ou
-
-404
-
-selon contexte.
-
-============================================================
-46. FORMAT API STANDARD
-============================================================
-
-SUCCÈS :
-
+```json
 {
-  success: true,
-  data: ...
+  "success": false,
+  "message": "Le service d'analyse d'image est temporairement indisponible. Réessayez dans quelques instants.",
+  "code": "AI_RATE_LIMITED"
 }
-
-ERREUR :
-
-{
-  success: false,
-  message: Message lisible,
-  code: ERROR_CODE
-}
-
-Option :
-
-details
-
-HTTP :
-
-400 validation
-
-401 authentification
-
-403 autorisation
-
-404 introuvable
-
-409 conflit
-
-413 image trop grande
-
-500 erreur serveur
-
-Ne jamais retourner stack trace en production.
-
-============================================================
-47. BACKEND STRUCTURE
-============================================================
-
-Créer une architecture proche de :
-
-server/
-├── src/
-│   ├── config/
-│   │   ├── db.ts
-│   │   └── env.ts
-│   │
-│   ├── controllers/
-│   │   ├── auth.controller.ts
-│   │   ├── user.controller.ts
-│   │   ├── shop.controller.ts
-│   │   └── product.controller.ts
-│   │
-│   ├── middleware/
-│   │   ├── auth.middleware.ts
-│   │   ├── role.middleware.ts
-│   │   ├── upload.middleware.ts
-│   │   ├── error.middleware.ts
-│   │   └── notFound.middleware.ts
-│   │
-│   ├── models/
-│   │   ├── User.ts
-│   │   ├── Shop.ts
-│   │   └── Product.ts
-│   │
-│   ├── routes/
-│   │   ├── auth.routes.ts
-│   │   ├── user.routes.ts
-│   │   ├── shop.routes.ts
-│   │   └── product.routes.ts
-│   │
-│   ├── services/
-│   │   ├── auth.service.ts
-│   │   ├── shop.service.ts
-│   │   ├── product.service.ts
-│   │   ├── seed.service.ts
-│   │   └── storage.service.ts
-│   │
-│   ├── schemas/
-│   │   ├── shop.schema.ts
-│   │   └── product.schema.ts
-│   │
-│   ├── constants/
-│   │   └── roles.ts
-│   │
-│   ├── types/
-│   │   └── express.d.ts
-│   │
-│   ├── utils/
-│   │   ├── ApiError.ts
-│   │   ├── asyncHandler.ts
-│   │   └── productCode.ts
-│   │
-│   ├── app.ts
-│   └── index.ts
-│
-├── .env
-├── .env.example
-├── package.json
-├── tsconfig.json
-└── README.md
-
-Ajustements mineurs autorisés s'ils ont une raison technique.
-
-Pas d'architecture inutilement complexe.
-
-============================================================
-48. EXPRESS / VERCEL
-============================================================
-
-Le backend doit fonctionner :
-
-EN LOCAL
-
-et
-
-SUR VERCEL.
-
-Créer Express app dans :
-
-src/app.ts
-
-Exporter l'application proprement.
-
-Entrypoint :
-
-src/index.ts
-
-Le projet doit suivre le modèle Express actuellement supporté par Vercel.
-
-Il doit pouvoir être utilisé localement avec :
-
-npm run dev
-
-et être déployé depuis Vercel.
-
-Ne pas créer un serveur permanent basé sur des suppositions incompatibles avec Vercel Functions.
-
-Si nécessaire :
-
-export default app
-
-pour permettre à Vercel d'exécuter l'application Express.
-
-Localement :
-
-faire écouter Express sur PORT.
-
-Ne pas démarrer un deuxième serveur lorsqu'il est exécuté par Vercel.
-
-============================================================
-49. MONGODB SUR VERCEL
-============================================================
-
-Créer connectDB() réutilisable.
-
-IMPORTANT :
-
-Une Vercel Function peut être exécutée plusieurs fois.
-
-Ne pas créer naïvement une nouvelle connexion MongoDB pour chaque requête.
-
-Réutiliser la connexion/promise Mongoose lorsque le runtime réutilise le module.
-
-connectDB() doit être :
-
-idempotent.
-
-S'il existe déjà une connexion valide :
-
-la réutiliser.
-
-Ne jamais logger :
-
-MONGODB_URI complet.
-
-============================================================
-50. SEED ADMIN SUR VERCEL
-============================================================
-
-Le seed ne doit PAS dépendre uniquement d'un :
-
-serveur qui démarre une seule fois.
-
-Vercel peut avoir plusieurs instances.
-
-Créer :
-
-ensureAdminExists()
-
-idempotent.
-
-La contrainte unique MongoDB doit empêcher réellement plusieurs admins.
-
-La logique doit pouvoir être appelée après connexion DB sans créer de doublon.
-
-============================================================
-51. HEALTH
-============================================================
-
-Créer :
-
-GET /api/health
-
-Réponse :
-
-{
-  success: true,
-  data: {
-    status: ok
-  }
-}
-
-Si possible indiquer simplement que l'API répond.
+```
 
 Ne jamais exposer :
 
-secrets
+* API key ;
+* réponse interne sensible ;
+* stack Gemini.
 
-credentials
+---
 
-URI DB.
+# 16. SERVICE GEMINI CENTRAL
 
-============================================================
-52. ENV SERVER
-============================================================
+Créer par exemple :
 
-Créer :
+```text
+server/src/services/gemini.service.ts
+```
 
-server/.env.example
+Ce service doit gérer :
 
-avec :
+* SDK Gemini ;
+* clés ;
+* modèles ;
+* retry limité ;
+* timeout ;
+* structured output ;
+* erreurs.
 
-PORT=4000
+Ne jamais appeler directement Gemini depuis :
 
-MONGODB_URI=YOUR_MONGODB_ATLAS_URI
+```text
+product.controller.ts
+ai.controller.ts
+```
 
-JWT_SECRET=CHANGE_WITH_LONG_RANDOM_SECRET
+Tous les appels passent par le service.
 
-JWT_EXPIRES_IN=7d
+---
 
-MOCK_AUTH_ENABLED=true
-
-BLOB_READ_WRITE_TOKEN=YOUR_VERCEL_BLOB_TOKEN
-
-Le vrai :
-
-server/.env
-
-ne doit JAMAIS être commité.
-
-============================================================
-53. ENV VERCEL
-============================================================
-
-README doit expliquer :
-
-Dans Vercel :
-
-Project
--> Settings
--> Environment Variables
-
-ajouter :
-
-MONGODB_URI
-
-JWT_SECRET
-
-JWT_EXPIRES_IN
-
-MOCK_AUTH_ENABLED
-
-BLOB_READ_WRITE_TOKEN
-
-Ne jamais mettre ces variables dans mobile/.
-
-Pour le premier test :
-
-MOCK_AUTH_ENABLED=true
-
-Plus tard avec vraie authentification :
-
-MOCK_AUTH_ENABLED=false
-
-============================================================
-54. ROOT DIRECTORY VERCEL
-============================================================
-
-Le repository contient :
-
-mobile/
-server/
-
-Lors de la création du projet backend Vercel :
-
-configurer :
-
-Root Directory = server
-
-Le projet Vercel ne doit PAS essayer de déployer l'application Expo comme backend.
-
-Vercel sert ici uniquement à héberger :
-
-server/
-
-============================================================
-55. VERCEL BLOB CONFIGURATION
-============================================================
-
-README doit expliquer la configuration manuelle :
-
-Dans le projet Vercel backend :
-
-Storage
-
-Créer/connecter un Vercel Blob Store.
-
-Utiliser un store approprié aux images produits.
-
-Pour cette version les images produits peuvent être publiques.
-
-S'assurer que :
-
-BLOB_READ_WRITE_TOKEN
-
-est disponible côté backend.
-
-Ne jamais copier ce token dans mobile/.
-
-============================================================
-56. MOBILE ENV
-============================================================
+# 17. SERVICE D’ANALYSE VISUELLE
 
 Créer :
 
-mobile/.env.example
+```text
+visual-analysis.service.ts
+```
 
-LOCAL :
+Fonction centrale conceptuelle :
 
-EXPO_PUBLIC_SERVER_URL=http://192.168.1.50:4000
+```text
+analyzeProductImage(buffer, mimeType)
+```
 
-BACKEND VERCEL :
+Cette fonction doit être utilisée dans DEUX contextes :
 
-EXPO_PUBLIC_SERVER_URL=https://mon-backend.vercel.app
+### A. image du catalogue
+
+Photo enregistrée par une boutique/admin.
+
+### B. image envoyée par USER
+
+Photo/capture recherchée.
 
 IMPORTANT :
 
-EXPO_PUBLIC_SERVER_URL
+utiliser exactement le **même schéma d’analyse** dans les deux cas.
 
-est une URL publique.
+Ainsi :
 
-Ce n'est PAS un secret.
+```text
+Photo catalogue
+      ↓
+VisualProfile
 
-C'est l'adresse du backend que le téléphone doit contacter.
+Photo utilisateur
+      ↓
+VisualProfile
 
-============================================================
-57. EXEMPLE ARCHITECTURE EN LIGNE
-============================================================
+VisualProfile
+      ↕
+VisualProfile
+```
 
-Exemple :
+La comparaison devient beaucoup plus fiable.
 
-Backend Vercel :
+---
 
-https://boutique-api.vercel.app
+# 18. POURQUOI CETTE ARCHITECTURE
 
-Alors mobile :
+NE PAS simplement demander à Gemini :
 
-EXPO_PUBLIC_SERVER_URL=https://boutique-api.vercel.app
+```text
+"Décris cette image"
+```
 
-Puis le mobile appelle :
+puis comparer du texte libre.
 
-https://boutique-api.vercel.app/api/health
+C’est trop imprécis.
 
-https://boutique-api.vercel.app/api/auth/options
-
-https://boutique-api.vercel.app/api/users
-
-etc.
-
-============================================================
-58. MOBILE STRUCTURE
-============================================================
-
-Créer une architecture proche de :
-
-mobile/
-├── app/
-│   ├── _layout.tsx
-│   ├── index.tsx
-│   ├── login.tsx
-│   │
-│   ├── (admin)/
-│   │   ├── _layout.tsx
-│   │   │
-│   │   ├── (tabs)/
-│   │   │   ├── _layout.tsx
-│   │   │   ├── index.tsx
-│   │   │   └── users.tsx
-│   │   │
-│   │   └── shops/
-│   │       ├── new.tsx
-│   │       └── [shopId]/
-│   │           └── products/
-│   │               ├── index.tsx
-│   │               ├── new.tsx
-│   │               └── [productId].tsx
-│   │
-│   └── (shop)/
-│       ├── _layout.tsx
-│       │
-│       ├── (tabs)/
-│       │   ├── _layout.tsx
-│       │   ├── index.tsx
-│       │   └── products.tsx
-│       │
-│       └── products/
-│           ├── new.tsx
-│           └── [productId].tsx
-│
-├── src/
-│   ├── api/
-│   │   ├── client.ts
-│   │   ├── auth.api.ts
-│   │   ├── users.api.ts
-│   │   ├── shops.api.ts
-│   │   └── products.api.ts
-│   │
-│   ├── components/
-│   │   ├── AppButton.tsx
-│   │   ├── AppInput.tsx
-│   │   ├── EmptyState.tsx
-│   │   ├── ErrorState.tsx
-│   │   ├── LoadingState.tsx
-│   │   ├── ProductCard.tsx
-│   │   ├── ProductForm.tsx
-│   │   └── ShopCard.tsx
-│   │
-│   ├── context/
-│   │   └── AuthContext.tsx
-│   │
-│   ├── constants/
-│   │   └── roles.ts
-│   │
-│   ├── storage/
-│   │   └── sessionStorage.ts
-│   │
-│   ├── types/
-│   │   ├── auth.ts
-│   │   ├── user.ts
-│   │   ├── shop.ts
-│   │   └── product.ts
-│   │
-│   └── utils/
-│       ├── errorMessage.ts
-│       └── arrays.ts
-│
-├── .env
-├── .env.example
-├── app.json
-└── package.json
-
-============================================================
-59. CLIENT API CENTRAL
-============================================================
-
-Créer :
-
-src/api/client.ts
-
-Il doit :
-
-- lire EXPO_PUBLIC_SERVER_URL ;
-- supprimer trailing slash si nécessaire ;
-- construire URL proprement ;
-- ajouter Authorization automatiquement ;
-- gérer JSON ;
-- gérer multipart ;
-- gérer erreurs non-2xx ;
-- exposer code HTTP ;
-- exposer message API.
-
-Ne pas dupliquer :
-
-fetch(...)
-headers
-Authorization
-
-dans tous les écrans.
-
-============================================================
-60. 401 GLOBAL
-============================================================
-
-Lorsque API retourne :
-
-401
-
-session invalide.
-
-Il faut :
-
-- supprimer token SecureStore ;
-- mettre AuthContext à user=null ;
-- retourner login.
-
-Créer une mécanique centralisée propre.
-
-Éviter une dépendance circulaire entre :
-
-AuthContext
-
-et
-
-api/client.
-
-Utiliser par exemple :
-
-sessionStorage
-
-+
-callback d'Unauthorized enregistré proprement
-
-ou architecture équivalente.
-
-============================================================
-61. ETATS UI
-============================================================
-
-Tous les écrans data doivent gérer :
-
-LOADING
-
-ActivityIndicator
-
-ERROR
-
-message
-[ Réessayer ]
-
-EMPTY
-
-exemple :
-
-Aucun produit.
-
-SUCCESS
-
-liste.
-
-Pendant :
-
-create
-update
-delete
-
-désactiver les boutons.
-
-============================================================
-62. RAFRAÎCHISSEMENT LISTES
-============================================================
-
-Après création boutique :
-
-rafraîchir Users.
-
-Après suppression boutique :
-
-rafraîchir Users.
-
-Après création Product :
-
-rafraîchir liste.
-
-Après update Product :
-
-rafraîchir liste.
-
-Après delete Product :
-
-rafraîchir liste.
-
-Quand une page liste reprend le focus :
-
-elle doit récupérer les données récentes.
-
-Utiliser une approche Expo Router/React Navigation appropriée comme useFocusEffect si utile.
-
-============================================================
-63. DESIGN
-============================================================
-
-Design simple et professionnel.
+Gemini doit produire un JSON strict possédant toujours les mêmes champs.
 
 Utiliser :
 
-React Native StyleSheet.
+```text
+Structured Output
+JSON Schema
+```
 
-Pas besoin :
+Puis valider encore la réponse côté backend.
 
-- Tailwind ;
-- grosse librairie UI ;
-- animation complexe ;
-- graphique ;
-- 3D.
+---
 
-Créer composants réutilisables.
+# 19. VISUAL PROFILE
 
-Boutons suffisamment grands.
+Créer un type central :
 
-Formulaires scrollables.
+```text
+VisualProductProfile
+```
 
-Interface lisible sur téléphone.
+Il doit contenir environ :
 
-============================================================
-64. CONFIRMATIONS
-============================================================
+```ts
+{
+  isProduct: boolean;
+  multipleProductsDetected: boolean;
 
-Suppression produit :
+  productFamily:
+    | "clothing"
+    | "footwear"
+    | "bag"
+    | "accessory"
+    | "other"
+    | "unknown";
 
-Supprimer ce produit ?
+  productType: string;
+  subtype: string | null;
 
-Annuler
-Supprimer
+  brand: string | null;
+  modelOrLine: string | null;
 
-Suppression boutique :
+  primaryColor: string | null;
+  secondaryColors: string[];
 
-Supprimer cette boutique et tous ses produits ?
+  pattern: string | null;
 
-Annuler
-Supprimer
+  materialAppearance: string[];
+  texture: string[];
 
-Utiliser Alert React Native ou composant équivalent simple.
+  silhouette: string | null;
+  fit: string | null;
 
-============================================================
-65. SÉCURITÉ BACKEND
-============================================================
+  necklineOrCollar: string | null;
+  sleeveLength: string | null;
 
-Obligatoire :
+  closure: string | null;
 
-- secrets seulement server ;
-- JWT vérifié ;
-- User rechargé depuis DB ;
-- role depuis DB ;
-- shopId depuis DB ;
-- ADMIN middleware ;
-- ownership BOUTIQUE vérifié ;
-- ObjectId validés ;
-- inputs validés ;
-- upload limité ;
-- MIME contrôlé ;
-- errors contrôlées ;
-- aucun filesystem persistant ;
-- aucune stack en production.
+  pocketDetails: string[];
 
-============================================================
-66. SECRETS INTERDITS MOBILE
-============================================================
+  logoDetails: string[];
 
-INTERDIT dans mobile/ :
+  visibleText: string[];
 
-MONGODB_URI
+  distinctiveFeatures: string[];
 
-Mongo username
+  styleKeywords: string[];
 
-Mongo password
+  visualFingerprintTokens: string[];
 
-JWT_SECRET
+  shortDescription: string;
 
-BLOB_READ_WRITE_TOKEN
+  confidence: number;
 
-Toute credential privée.
+  fieldConfidence: {
+    productType: number;
+    brand: number;
+    model: number;
+    color: number;
+    pattern: number;
+  };
+}
+```
 
-La seule variable nécessaire actuellement :
+---
 
-EXPO_PUBLIC_SERVER_URL
+# 20. TYPES DE PRODUITS NORMALISÉS
 
-============================================================
-67. .GITIGNORE
-============================================================
+Pour éviter :
 
-Ignorer :
+```text
+pull
+pullover
+sweater
+tricot
+pull-over
+```
 
-node_modules/
+représentant parfois le même type, utiliser des clés internes normalisées.
 
-.env
+Prévoir notamment :
 
-.env.*
+```text
+t_shirt
+polo
+shirt
+blouse
+
+sweater
+cardigan
+hoodie
+sweatshirt
+
+jacket
+coat
+blazer
+vest
+
+dress
+skirt
+
+pants
+jeans
+shorts
+leggings
+
+sneakers
+boots
+sandals
+heels
+loafers
+flats
+
+bag
+backpack
+
+hat
+scarf
+belt
+
+other
+unknown
+```
+
+Dans l’UI française :
+
+```text
+sweater -> Pull
+hoodie -> Sweat à capuche
+sweatshirt -> Sweat sans capuche
+pants -> Pantalon
+sneakers -> Baskets
+etc.
+```
+
+Les valeurs internes doivent rester stables.
+
+---
+
+# 21. DIFFÉRENCIER DEUX PULLS TRÈS SIMILAIRES
+
+C’EST UN POINT CRITIQUE DU PROJET.
+
+Deux pulls peuvent être :
+
+* noirs ;
+* même marque ;
+* manches longues ;
+* col rond ;
+
+mais être deux produits différents.
+
+Gemini doit donc particulièrement rechercher les détails discriminants.
+
+Exemples :
+
+```text
+maille fine / maille épaisse
+tricot côtelé
+torsades
+texture
+type de col
+largeur du col
+col roulé
+col V
+col rond
+demi-zip
+zip complet
+boutons
+couture raglan
+épaules tombantes
+coupe courte
+coupe oversize
+poignets côtelés
+bas côtelé
+nombre de poches
+emplacement logo
+taille logo
+forme logo
+texte visible
+motif poitrine
+rayures
+color blocking
+surpiqûres
+matière apparente
+structure du tissu
+détails manche
+détails col
+détails fermeture
+élément distinctif
+```
 
-mais conserver :
+La description IA doit se concentrer sur ce qui permet de distinguer :
 
+```text
+Produit A
+```
 
-logs
+de :
 
-build/dist appropriés
+```text
+Produit B qui lui ressemble.
+```
 
-Expo cache
+---
 
-Ne jamais versionner :
+# 22. PROMPT GEMINI À UTILISER
 
-Mongo credentials
+Créer une constante backend du type :
 
-JWT secret
+```text
+PRODUCT_VISION_PROMPT
+```
 
-Vercel Blob token.
+avec une instruction proche de :
 
-============================================================
-68. MONGODB ATLAS
-============================================================
+```text
+Tu es un système d'extraction visuelle destiné à identifier et comparer des
+produits de mode et de commerce.
 
-README doit expliquer :
+Analyse uniquement le produit principal visible dans l'image.
 
-Le backend Vercel doit pouvoir accéder au cluster Atlas.
+Ton objectif n'est pas de rédiger une belle description marketing.
 
-Configurer :
+Ton objectif est d'extraire les caractéristiques visuelles les plus utiles
+pour distinguer ce produit d'autres produits très similaires.
 
-MongoDB Atlas
--> Network Access
+Ne devine jamais une marque, un modèle, une référence ou du texte qui n'est
+pas réellement visible.
 
-de manière adaptée à l'environnement Vercel.
+Si une information ne peut pas être déterminée visuellement, utilise null,
+unknown ou un tableau vide selon le schéma.
 
-Ne jamais mettre la connexion Atlas directement dans le téléphone.
+Fais particulièrement attention aux caractéristiques discriminantes :
+type exact du produit, forme, coupe, silhouette, couleur dominante,
+couleurs secondaires, matière apparente, texture, motif, col, manches,
+fermeture, poches, coutures, bordures, logo, emplacement du logo,
+texte visible et détails distinctifs.
 
-============================================================
-69. MOCK AUTH AVERTISSEMENT
-============================================================
+Pour un vêtement, distingue notamment sweater, sweatshirt, hoodie, shirt,
+t-shirt, jacket, cardigan, pants, jeans, etc.
 
-Afficher clairement dans README :
+Deux produits qui semblent presque identiques doivent produire des profils
+différents si des différences visuelles sont réellement observables.
 
-ATTENTION
+N'utilise pas le décor, le mannequin, l'arrière-plan ou les objets voisins
+comme caractéristiques du produit.
 
-MOCK_AUTH_ENABLED=true permet de sélectionner des comptes sans mot de passe.
+Si plusieurs produits sont visibles, sélectionne le produit principal,
+central ou dominant et indique multipleProductsDetected=true.
 
-Cette fonctionnalité sert uniquement au développement et à la démonstration.
+Retourne uniquement les données correspondant au JSON Schema fourni.
+```
 
-Ne pas considérer cette configuration comme une authentification sécurisée pour une vraie mise en production publique.
+Ne pas demander du Markdown.
 
-Préparer le code pour ajouter plus tard :
+Ne pas parser une réponse libre.
 
-email + password
+Utiliser réellement le structured output.
 
-ou OAuth
+---
 
-sans modifier les permissions métier Products/Shop.
+# 23. VISUAL FINGERPRINT TOKENS
 
-============================================================
-70. PAS DE DONNÉES FAKE
-============================================================
+Le champ :
 
-Créer automatiquement uniquement :
+```text
+visualFingerprintTokens
+```
 
-Administrateur.
+est très important.
 
-NE PAS créer :
+Gemini doit générer entre environ :
 
-Nike
+```text
+4 et 12
+```
 
-Adidas
+caractéristiques visuelles courtes et normalisées.
 
-produits exemples
+Exemple pour un pull :
 
-boutiques exemples.
+```json
+[
+  "crew_neck",
+  "black",
+  "fine_knit",
+  "white_chest_logo",
+  "ribbed_cuffs",
+  "regular_fit"
+]
+```
 
-Les boutiques doivent être ajoutées depuis l'interface admin.
+Autre pull noir :
 
-============================================================
-71. TEST 1 ADMIN
-============================================================
+```json
+[
+  "crew_neck",
+  "black",
+  "cable_knit",
+  "no_logo",
+  "dropped_shoulders",
+  "oversized_fit"
+]
+```
 
-DB initialement sans User ADMIN.
+Ils deviennent beaucoup plus faciles à différencier.
 
-Lancer backend.
+---
 
-Résultat :
+# 24. NE JAMAIS INVENTER LA MARQUE
 
-1 ADMIN.
+Si Gemini voit clairement :
 
-Relancer.
+```text
+NIKE
+```
 
-Résultat :
+alors :
 
-toujours 1 ADMIN.
+```json
+"brand": "Nike"
+```
 
-============================================================
-72. TEST 2 LOGIN INITIAL
-============================================================
+Si aucun logo/texte fiable :
 
-Aucune boutique.
+```json
+"brand": null
+```
 
-Ouvrir application.
+Même règle pour :
+
+```text
+modelOrLine
+visibleText
+```
+
+Ne jamais inventer :
+
+```text
+Nike Tech Fleece
+```
+
+simplement parce que le vêtement ressemble à un produit Nike.
+
+---
+
+# 25. CONFIDENCE
+
+Chaque analyse possède :
+
+```text
+confidence
+```
+
+entre :
+
+```text
+0
+et
+1
+```
+
+Ajouter aussi quelques confidences par champ.
+
+Exemple :
+
+```json
+{
+  "productType": 0.98,
+  "brand": 0.20,
+  "model": 0.05,
+  "color": 0.99,
+  "pattern": 0.92
+}
+```
+
+Une information avec faible confiance doit avoir moins d’importance dans le matching.
+
+---
+
+# 26. MODIFIER PRODUCT
+
+NE PAS supprimer les champs produits existants.
+
+Préserver notamment :
+
+```text
+name
+type
+brand
+model
+reference
+sku
+barcode
+colors
+sizes
+material
+description
+price
+currency
+stock
+imageUrl
+shopId
+etc.
+```
+
+Ajouter :
+
+```text
+aiVisualProfile
+aiAnalysisStatus
+aiAnalysisModel
+aiAnalyzedAt
+```
+
+Exemple :
+
+```text
+aiAnalysisStatus:
+PENDING
+READY
+FAILED
+```
+
+`aiVisualProfile` :
+
+```text
+VisualProductProfile | null
+```
+
+---
+
+# 27. FORMULAIRE PRODUIT — LE RENDRE PLUS SIMPLE
+
+Le formulaire actuel ne doit PAS devenir énorme.
+
+C’est très important.
+
+L’utilisateur boutique/admin ne doit pas remplir 30 caractéristiques simplement pour créer un produit.
+
+La partie principale visible doit être courte.
+
+### Champs principaux
+
+```text
+Image *
+Nom *
+Type de produit *
+Marque *
+Modèle
+Référence
+Couleur principale *
+Autres couleurs
+Tailles disponibles
+Stock
+Prix
+Description courte
+```
+
+C’est suffisant pour la vue principale.
+
+---
+
+# 28. TYPE DE PRODUIT FACILE
+
+Le champ :
+
+```text
+Type de produit
+```
+
+doit être une sélection simple.
+
+Exemple :
+
+```text
+T-shirt
+Polo
+Chemise
+Pull
+Cardigan
+Sweat
+Sweat à capuche
+Veste
+Manteau
+Pantalon
+Jean
+Short
+Robe
+Jupe
+Baskets
+Chaussures
+Sac
+Accessoire
+Autre
+```
+
+Si :
+
+```text
+Autre
+```
+
+afficher un petit champ texte.
+
+---
+
+# 29. COULEURS FACILES
+
+Ne pas demander des structures complexes.
 
 Afficher :
 
-Administrateur
+```text
+Couleur principale *
+```
 
-Boutique
+et :
 
-Cliquer Boutique :
+```text
+Autres couleurs
+```
 
-Aucune boutique disponible.
+Exemple :
 
-Cliquer Admin :
+```text
+Noir
 
-connexion.
+Blanc, Rouge
+```
 
-Tabs :
+Convertir automatiquement.
 
-Accueil
-Users
+---
 
-============================================================
-73. TEST 3 CRÉATION BOUTIQUE
-============================================================
+# 30. TAILLES FACILES
 
-Admin :
+Champ :
 
-Users
+```text
+Tailles disponibles
+```
 
-+ Ajouter une boutique
+Exemple :
+
+```text
+S, M, L, XL
+```
+
+ou :
+
+```text
+40, 41, 42, 43
+```
+
+Convertir en tableau automatiquement.
+
+Ne pas forcer la boutique à créer 15 variantes complexes dans cette V1.
+
+---
+
+# 31. STOCK
+
+Conserver le stock actuel.
+
+Pour cette V1 :
+
+```text
+stock
+```
+
+reste un stock global déclaré.
+
+Le USER peut voir :
+
+```text
+Stock déclaré : 4
+Tailles : M, L, XL
+```
+
+Mais afficher également :
+
+```text
+Appelez la boutique pour confirmer la disponibilité de votre taille.
+```
+
+Ne jamais promettre :
+
+```text
+"La taille L est forcément en stock"
+```
+
+simplement parce que `L` existe dans la liste.
+
+---
+
+# 32. SECTION AVANCÉE PRODUIT
+
+Les caractéristiques visuelles détaillées ne doivent pas encombrer le formulaire.
+
+Créer éventuellement :
+
+```text
+Détails avancés
+```
+
+replié par défaut.
+
+Peut afficher après analyse :
+
+```text
+Matière apparente
+Motif
+Texture
+Coupe
+Col
+Manches
+Fermeture
+Caractéristiques distinctives
+```
+
+Ces informations sont principalement générées automatiquement par Gemini.
+
+L’utilisateur boutique peut éventuellement les corriger.
+
+Mais il n’est pas obligé de toutes les saisir.
+
+---
+
+# 33. ANALYSE AUTOMATIQUE DES PHOTOS CATALOGUE
+
+Lorsqu’une boutique/admin crée un produit avec une image :
+
+```text
+Image produit
+    ↓
+Vercel Blob
+    ↓
+Gemini
+    ↓
+VisualProductProfile
+    ↓
+MongoDB Product.aiVisualProfile
+```
+
+L’analyse IA doit utiliser exactement le même schéma que l’analyse USER.
+
+---
+
+# 34. ÉCHEC GEMINI PENDANT CRÉATION PRODUIT
+
+IMPORTANT :
+
+Gemini ne doit PAS rendre le CRUD produit inutilisable.
+
+Si :
+
+```text
+Produit enregistré correctement
+```
+
+mais :
+
+```text
+Gemini indisponible
+```
+
+alors le produit reste créé.
+
+Mettre :
+
+```text
+aiAnalysisStatus = FAILED
+```
+
+Le produit reste visible et modifiable.
+
+Ne jamais supprimer le produit uniquement parce que Gemini est indisponible.
+
+---
+
+# 35. RELANCER ANALYSE PRODUIT
+
+Ajouter une route :
+
+```text
+POST /api/shops/:shopId/products/:productId/analyze
+```
+
+Autorisation :
+
+```text
+ADMIN
+ou
+BOUTIQUE propriétaire du shop
+```
+
+Elle relance l’analyse sur l’image actuelle du produit.
+
+Dans l’interface produit :
+
+si :
+
+```text
+aiAnalysisStatus = FAILED
+```
+
+afficher discrètement :
+
+```text
+Analyse IA non disponible
+[ Réessayer ]
+```
+
+Ne pas encombrer l’interface.
+
+---
+
+# 36. PRODUITS ANCIENS
+
+Il peut déjà exister des Products sans :
+
+```text
+aiVisualProfile
+```
+
+NE PAS casser leur affichage.
+
+Ils continuent à fonctionner.
+
+Le matching doit utiliser leurs champs manuels comme fallback :
+
+```text
+type
+brand
+colors
+material
+name
+model
+reference
+```
+
+Si l’utilisateur boutique/admin modifie le produit ou lance :
+
+```text
+Réessayer l’analyse IA
+```
+
+le profil IA peut être ajouté.
+
+---
+
+# 37. ROUTE RECHERCHE USER
+
+Créer par exemple :
+
+```text
+POST /api/ai/product-search
+```
+
+Accessible uniquement au rôle :
+
+```text
+USER
+```
+
+Authentification JWT obligatoire.
+
+multipart/form-data :
+
+```text
+image
+```
+
+et optionnel :
+
+```text
+size
+latitude
+longitude
+```
+
+Le backend :
+
+1. valide image ;
+2. analyse image Gemini ;
+3. récupère les Products pertinents ;
+4. calcule score ;
+5. récupère Shop ;
+6. calcule distance si coordonnées disponibles ;
+7. retourne résultats.
+
+---
+
+# 38. NE PAS ENVOYER TOUT MONGODB À GEMINI
+
+INTERDIT :
+
+```text
+récupérer 20 000 produits
++
+envoyer les 20 000 produits à Gemini
++
+demander "lequel correspond ?"
+```
+
+Ce serait :
+
+* lent ;
+* cher ;
+* fragile ;
+* inutile ;
+* difficile à scaler.
+
+Architecture obligatoire :
+
+```text
+Gemini
+   ↓
+extrait un VisualProductProfile
+   ↓
+Backend
+   ↓
+compare avec MongoDB
+```
+
+Le matching est effectué côté backend.
+
+---
+
+# 39. SERVICE DE MATCHING
 
 Créer :
 
-Nom :
-Nike Alger
+```text
+product-match.service.ts
+```
 
-Téléphone :
-0550000000
+Fonction conceptuelle :
+
+```text
+findMatchingProducts(queryProfile, products)
+```
+
+Le code doit être :
+
+* déterministe ;
+* testable ;
+* indépendant de Gemini ;
+* centralisé.
+
+---
+
+# 40. SCORE DE MATCHING
+
+Créer un score :
+
+```text
+0 à 100
+```
+
+Ne pas utiliser seulement le nom du produit.
+
+Prendre en compte notamment :
+
+```text
+type
+sous-type
+marque
+modèle
+référence
+couleur
+couleurs secondaires
+motif
+matière
+texture
+silhouette
+coupe
+col
+manches
+fermeture
+logo
+texte visible
+distinctiveFeatures
+visualFingerprintTokens
+```
+
+---
+
+# 41. PONDÉRATION RECOMMANDÉE
+
+Centraliser les poids dans un fichier configurable.
+
+Approche de départ possible :
+
+```text
+référence/modèle visible exact       très fort
+marque fiable                        fort
+productType                          fort
+subtype                              fort
+visualFingerprintTokens             très fort
+couleur principale                   moyen
+motif                                moyen
+matière                              moyen
+texture                              moyen
+silhouette/coupe                     moyen
+col/manches/fermeture                moyen
+distinctiveFeatures                  fort
+texte/logo visible                   fort
+```
+
+Ne pas figer les poids dans 12 fichiers différents.
+
+Créer :
+
+```text
+MATCH_WEIGHTS
+```
+
+dans un seul endroit.
+
+---
+
+# 42. NE PAS PÉNALISER UNE INFORMATION INVISIBLE
+
+Exemple :
+
+la photo USER montre seulement l’avant du pull.
+
+Impossible de voir une fermeture arrière.
+
+Si un champ vaut :
+
+```text
+unknown
+null
+```
+
+ne pas considérer cela comme une différence.
+
+Comparer uniquement les caractéristiques suffisamment observables.
+
+---
+
+# 43. NORMALISATION
+
+Créer des fonctions centrales :
+
+```text
+normalizeString()
+normalizeColor()
+normalizeProductType()
+normalizeFeatureToken()
+```
+
+Exemple :
+
+```text
+"Noir"
+"black"
+"BLACK"
+```
+
+doivent pouvoir être comparés correctement.
+
+Même principe pour :
+
+```text
+Pull
+sweater
+pullover
+```
+
+via les types normalisés.
+
+---
+
+# 44. PRODUITS PRESQUE IDENTIQUES
+
+Cas critique :
+
+Produit A :
+
+```text
+Pull noir Nike
+col rond
+maille fine
+petit logo blanc poitrine gauche
+coupe regular
+```
+
+Produit B :
+
+```text
+Pull noir Nike
+col rond
+maille épaisse
+gros logo central
+coupe oversized
+```
+
+Ils ne doivent PAS obtenir exactement le même score.
+
+Le matching doit utiliser :
+
+```text
+texture
+logoDetails
+distinctiveFeatures
+visualFingerprintTokens
+fit
+```
+
+pour les différencier.
+
+---
+
+# 45. SEUIL DE MATCH
+
+Créer des constantes configurables.
+
+Exemple de départ :
+
+```text
+VERY_LIKELY >= 85
+LIKELY      >= 70
+POSSIBLE    >= 55
+```
+
+Sous :
+
+```text
+55
+```
+
+ne pas présenter comme résultat fiable.
+
+Les valeurs doivent rester faciles à ajuster après tests réels.
+
+---
+
+# 46. NE JAMAIS PRÉTENDRE À UNE CERTITUDE INEXISTANTE
+
+Si score :
+
+```text
+92
+```
+
+afficher :
+
+```text
+Correspondance très probable
+```
+
+PAS :
+
+```text
+C'est exactement ce produit à 100 %
+```
+
+sauf information réellement déterminante comme :
+
+* référence visible ;
+* modèle exact visible ;
+* identité très forte.
+
+---
+
+# 47. PLUSIEURS PRODUITS TRÈS PROCHES
+
+Si :
+
+```text
+Produit A = 88
+Produit B = 86
+Produit C = 84
+```
+
+ne pas cacher B et C.
+
+Afficher :
+
+```text
+Plusieurs produits ressemblent fortement à votre image.
+```
+
+Puis les candidats.
+
+Cela évite une mauvaise identification.
+
+---
+
+# 48. SÉLECTION DES MATCHS AVANT DISTANCE
+
+Algorithme recommandé :
+
+```text
+bestScore = meilleur score
+
+garder seulement :
+score >= MIN_MATCH_SCORE
+ET
+score >= bestScore - MATCH_WINDOW
+```
+
+Exemple :
+
+```text
+MIN_MATCH_SCORE = 55
+MATCH_WINDOW = 8
+```
+
+Si meilleur produit :
+
+```text
+91
+```
+
+on garde par exemple :
+
+```text
+91
+88
+85
+83
+```
+
+mais pas :
+
+```text
+65
+```
+
+simplement parce que sa boutique est proche.
+
+---
+
+# 49. LOCALISATION BOUTIQUES
+
+Actuellement Shop possède :
+
+```text
+address
+```
+
+Conserver ce champ.
+
+Ajouter :
+
+```text
+latitude
+longitude
+```
+
+optionnels.
+
+Exemple :
+
+```ts
+latitude?: number | null;
+longitude?: number | null;
+```
+
+---
+
+# 50. CRÉATION / MODIFICATION BOUTIQUE
+
+Le formulaire boutique reste simple :
+
+```text
+Nom
+Téléphone
+Adresse
+```
+
+Ne pas demander normalement à l’admin de saisir lui-même :
+
+```text
+36.7525
+3.0420
+```
+
+Essayer automatiquement de convertir :
+
+```text
+adresse
+```
+
+vers :
+
+```text
+latitude/longitude
+```
+
+depuis l’application mobile.
+
+Utiliser `expo-location` et une méthode de géocodage compatible avec le projet.
+
+Si cela échoue :
+
+la création de la boutique doit quand même fonctionner.
+
+Dans ce cas :
+
+```text
+latitude = null
+longitude = null
+```
+
+et la distance ne sera simplement pas disponible.
+
+---
+
+# 51. MODIFIER UNE BOUTIQUE
+
+Ajouter si ce n’est pas déjà présent :
+
+```text
+[ Modifier la boutique ]
+```
+
+dans Admin -> Users.
+
+Permettre à ADMIN de corriger :
+
+```text
+nom
+téléphone
+adresse
+```
+
+Lors d’une modification d’adresse :
+
+essayer à nouveau de géocoder.
+
+Cela est nécessaire parce que :
+
+adresse et téléphone doivent être exacts pour les USER.
+
+---
+
+# 52. LOCALISATION USER
+
+Sur l’Accueil USER :
+
+demander uniquement la permission :
+
+```text
+localisation au premier plan
+```
+
+Pas de localisation en arrière-plan.
+
+Pas de tracking permanent.
+
+Utiliser la position uniquement pour :
+
+```text
+classer les boutiques par distance
+```
+
+Si permission acceptée :
+
+récupérer :
+
+```text
+latitude
+longitude
+```
+
+Si refusée :
+
+la recherche produit fonctionne quand même.
+
+Simplement :
+
+```text
+distanceKm = null
+```
+
+---
+
+# 53. CALCUL DISTANCE
+
+Créer :
+
+```text
+distance.service.ts
+```
+
+Utiliser une formule correcte type Haversine.
+
+Entrée :
+
+```text
+userLatitude
+userLongitude
+shopLatitude
+shopLongitude
+```
+
+Sortie :
+
+```text
+distanceKm
+```
+
+Arrondir pour l’affichage.
+
+Exemple :
+
+```text
+1.2 km
+5.7 km
+```
+
+---
+
+# 54. TRI FINAL
+
+Après sélection des bons produits :
+
+si localisation USER disponible :
+
+```text
+trier principalement les correspondances retenues par distance
+```
+
+mais seulement dans la fenêtre des bons scores.
+
+Logique :
+
+```text
+1. qualité du matching
+2. éliminer mauvais candidats
+3. parmi les bons candidats :
+   boutique la plus proche
+```
+
+Jamais :
+
+```text
+boutique la plus proche
+avant
+qualité du produit
+```
+
+---
+
+# 55. TAILLE RECHERCHÉE
+
+Si USER renseigne :
+
+```text
+Taille recherchée = L
+```
+
+alors :
+
+si Product.sizes contient :
+
+```text
+L
+```
+
+le résultat est prioritaire.
+
+Si la taille n’est pas listée :
+
+le produit peut être affiché plus bas ou marqué :
+
+```text
+Taille L non déclarée
+```
+
+Ne jamais affirmer qu’elle est disponible physiquement.
+
+---
+
+# 56. STOCK
+
+Si :
+
+```text
+stock = 0
+```
+
+par défaut ne pas recommander le produit comme disponible.
+
+Si :
+
+```text
+stock > 0
+```
+
+afficher :
+
+```text
+Stock déclaré : X
+```
+
+Si stock non renseigné :
+
+```text
+Stock à confirmer
+```
+
+Toujours afficher :
+
+```text
+Appelez la boutique pour confirmer le stock et votre taille avant de vous déplacer.
+```
+
+---
+
+# 57. RÉPONSE API SEARCH
+
+Structure proche de :
+
+```json
+{
+  "success": true,
+  "data": {
+    "analysis": {
+      "productType": "sweater",
+      "brand": "Nike",
+      "primaryColor": "black",
+      "shortDescription": "..."
+    },
+    "matches": [
+      {
+        "score": 91,
+        "confidenceLabel": "VERY_LIKELY",
+        "reasons": [
+          "Même type de produit",
+          "Même couleur principale",
+          "Logo similaire",
+          "Texture similaire"
+        ],
+        "product": {
+          "id": "...",
+          "name": "...",
+          "brand": "Nike",
+          "type": "sweater",
+          "model": "...",
+          "reference": "...",
+          "colors": ["Noir"],
+          "sizes": ["M", "L", "XL"],
+          "stock": 4,
+          "price": 8500,
+          "currency": "DZD",
+          "imageUrl": "..."
+        },
+        "shop": {
+          "id": "...",
+          "name": "Boutique Alger",
+          "phone": "0550000000",
+          "address": "Alger Centre",
+          "latitude": 36.0,
+          "longitude": 3.0
+        },
+        "distanceKm": 1.4,
+        "requestedSizeStatus": "LISTED",
+        "mustConfirmByPhone": true
+      }
+    ]
+  }
+}
+```
+
+---
+
+# 58. UI RÉSULTAT USER
+
+Après recherche afficher :
+
+```text
+Produit détecté
+```
+
+avec :
+
+* type ;
+* marque si fiable ;
+* couleurs ;
+* courte description.
+
+Puis :
+
+```text
+Boutiques correspondantes
+```
+
+Chaque résultat doit être une carte.
+
+---
+
+# 59. CARTE RÉSULTAT
+
+Afficher :
+
+```text
+IMAGE PRODUIT
+
+Nom du produit
+
+Correspondance très probable — 91 %
+
+Boutique :
+Nike Alger
 
 Adresse :
 Alger Centre
 
-Résultat :
+Distance :
+1.4 km
 
-Users :
+Téléphone :
+0550000000
 
-Administrateur
-Nike Alger
+Tailles déclarées :
+M, L, XL
 
-MongoDB :
-
-1 Shop Nike
-
-1 User BOUTIQUE lié à Nike.
-
-============================================================
-74. TEST 4 LOGIN BOUTIQUE
-============================================================
-
-Logout ADMIN.
-
-Boutique.
-
-Comme une boutique existe :
-
-connexion Nike.
-
-Tabs :
-
-Accueil
-Produits
-
-Produits :
-
-Aucun produit.
-
-============================================================
-75. TEST 5 PRODUIT
-============================================================
-
-Créer :
-
-Image :
-image téléphone < 3 MiB
-
-Nom :
-Air Max Test
-
-Type :
-Chaussure
-
-Marque :
-Nike
-
-Modèle :
-Air Max Test
-
-Référence :
-REF001
-
-SKU :
-SKU001
-
-Couleurs :
-Noir, Blanc
-
-Tailles :
-40, 41, 42
-
-Matière :
-Cuir
+Stock déclaré :
+4
 
 Prix :
-10000
+8 500 DZD
 
-Devise :
-DZD
+[ Appeler la boutique ]
+```
 
-Stock :
-5
+Si USER a demandé taille L :
 
-Attribut :
+```text
+Taille L déclarée
+```
 
-Semelle
-Caoutchouc
+ou :
 
-Résultat :
+```text
+Taille L non déclarée
+```
 
-Product créé MongoDB.
+---
 
-Image créée Vercel Blob.
+# 60. APPELER LA BOUTIQUE
 
-imageUrl enregistré MongoDB.
+Bouton :
 
-Produit visible téléphone.
+```text
+[ Appeler la boutique ]
+```
 
-============================================================
-76. TEST 6 UPDATE
-============================================================
+Utiliser React Native Linking :
 
-Modifier :
+```text
+tel:
+```
 
-stock 5 -> 10
+Ne jamais appeler automatiquement.
 
-Ajouter :
+L’utilisateur doit cliquer.
 
-Rouge
+---
 
-Sauvegarder.
+# 61. AVERTISSEMENT RÉSULTAT
 
-Recharger.
+Afficher discrètement :
 
-Résultat :
+```text
+L’identification est basée sur l’image et peut être approximative.
+Appelez la boutique pour confirmer le modèle, la taille et le stock avant de vous déplacer.
+```
 
-stock 10
+---
 
-couleurs Noir Blanc Rouge.
+# 62. IMAGE PAS CLAIRE
 
-============================================================
-77. TEST 7 IMAGE UPDATE
-============================================================
+Si :
 
-Modifier Product.
+```text
+analysis.confidence
+```
 
-Choisir nouvelle image.
+est trop faible :
 
-Résultat :
+ne pas afficher de fausse certitude.
 
-nouvelle image Blob créée.
+Afficher :
 
-Product MongoDB mis à jour.
+```text
+Le produit n’a pas pu être identifié avec suffisamment de précision.
+Essayez une photo plus nette ou recadrez davantage le produit.
+```
 
-ancienne image supprimée après succès.
+Boutons :
 
-Si update DB échoue :
+```text
+[ Reprendre une photo ]
+[ Choisir une autre image ]
+```
 
-nouvelle image supprimée.
+---
 
-ancienne image conservée.
+# 63. PLUSIEURS PRODUITS DÉTECTÉS
 
-============================================================
-78. TEST 8 ADMIN VOIT PRODUIT
-============================================================
+Si :
 
-Logout.
+```text
+multipleProductsDetected = true
+```
 
-Admin.
+afficher éventuellement :
 
-Users.
+```text
+Plusieurs produits ont été détectés dans l’image.
+Recadrez le produit recherché pour obtenir un meilleur résultat.
+```
 
-Nike Alger.
+On peut quand même afficher les résultats si la confiance reste suffisante.
 
-Gérer les produits.
+---
 
-Résultat :
+# 64. STRUCTURE BACKEND
 
-le même Product est affiché.
+Adapter la structure existante.
 
-Admin change stock.
-
-Logout.
-
-Boutique Nike.
-
-Le nouveau stock est visible.
-
-============================================================
-79. TEST 9 DEUX BOUTIQUES
-============================================================
-
-Admin crée :
-
-Adidas Oran.
-
-Logout.
-
-Boutique.
-
-Afficher choix :
-
-Nike Alger
-
-Adidas Oran
-
-Connexion Adidas.
-
-Produits :
-
-aucun produit Nike visible.
-
-============================================================
-80. TEST CROSS-SHOP
-============================================================
-
-Récupérer token Adidas.
-
-Envoyer manuellement :
-
-GET /api/shops/{ID_NIKE}/products
-
-avec token Adidas.
-
-Résultat obligatoire :
-
-403.
-
-POST :
-403.
-
-PATCH :
-403.
-
-DELETE :
-403.
-
-============================================================
-81. TEST SUPPRESSION PRODUIT
-============================================================
-
-Supprimer un produit.
-
-Résultat :
-
-Product absent MongoDB.
-
-Blob supprimé.
-
-Liste rafraîchie.
-
-============================================================
-82. TEST SUPPRESSION SHOP
-============================================================
-
-Admin supprime Nike.
-
-Résultat DB :
-
-Shop Nike supprimé.
-
-User Nike supprimé.
-
-Products Nike supprimés.
-
-Résultat Blob :
-
-tentative suppression de toutes les images Nike.
-
-Ancien token Nike :
-
-GET /auth/me
-
-=> 401.
-
-============================================================
-83. TEST MULTI-TÉLÉPHONES
-============================================================
-
-Configurer téléphone A :
-
-EXPO_PUBLIC_SERVER_URL=https://BACKEND.vercel.app
-
-Téléphone B :
-
-même URL.
-
-Téléphone A :
-
-admin crée Boutique X.
-
-Téléphone B :
-
-rafraîchir login/options.
-
-Boutique X doit apparaître.
-
-Téléphone A crée produit.
-
-Téléphone B connecté à même boutique :
-
-rafraîchir Produits.
-
-Le même produit doit apparaître.
-
-Aucune donnée principale ne doit être stockée uniquement dans le téléphone.
-
-============================================================
-84. TEST ERREURS
-============================================================
-
-Tester :
-
-MongoDB indisponible
-
-Blob indisponible
-
-API inaccessible
-
-token invalide
-
-token expiré
-
-User supprimé
-
-Shop inexistant
-
-Product inexistant
-
-ObjectId incorrect
-
-champ requis vide
-
-price négatif
-
-stock négatif
-
-image > 3 MiB
-
-format image incorrect
-
-aucune permission galerie
-
-double clic Create
-
-cross-shop
-
-Backend ne doit pas crash.
-
-Mobile ne doit pas afficher écran blanc.
-
-============================================================
-85. SCRIPTS SERVER
-============================================================
-
-package.json doit contenir des scripts utiles :
-
-dev
-
-build
-
-start
-
-typecheck
-
-éventuellement lint
-
-Utiliser une solution TypeScript propre comme :
-
-tsx
-
-en développement.
-
-Local :
-
-npm run dev
-
-============================================================
-86. README BACKEND LOCAL
-============================================================
-
-README :
-
-cd server
-
-npm install
-
-Créer :
-
-.env
-
-avec :
-
-PORT=4000
-
-MONGODB_URI=mongodb+srv://...
-
-JWT_SECRET=...
-
-JWT_EXPIRES_IN=7d
-
-MOCK_AUTH_ENABLED=true
-
-BLOB_READ_WRITE_TOKEN=...
-
-Puis :
-
-npm run dev
-
-Tester :
-
-http://localhost:4000/api/health
-
-============================================================
-87. README MOBILE LOCAL BACKEND
-============================================================
-
-Si backend tourne sur PC :
-
-PC et téléphone doivent être sur réseau permettant la connexion.
-
-Trouver IP du PC.
-
-Exemple :
-
-192.168.1.50
-
-mobile/.env :
-
-EXPO_PUBLIC_SERVER_URL=http://192.168.1.50:4000
-
-Puis :
-
-cd mobile
-
-npm install
-
-npx expo start
-
-Scanner QR Expo Go.
-
-Ne PAS utiliser :
-
-localhost:4000
-
-depuis un téléphone physique pour contacter le PC.
-
-============================================================
-88. README MOBILE BACKEND VERCEL
-============================================================
-
-Après déploiement Vercel :
-
-exemple URL :
-
-https://boutique-api.vercel.app
-
-mobile/.env :
-
-EXPO_PUBLIC_SERVER_URL=https://boutique-api.vercel.app
-
-À partir de ce moment :
-
-le PC n'a plus besoin d'héberger l'API.
-
-Le téléphone communique directement avec Vercel.
-
-============================================================
-89. README DEPLOIEMENT VERCEL
-============================================================
-
-Ajouter étapes précises :
-
-1. pousser projet dans Git ;
-2. créer projet Vercel ;
-3. importer repository ;
-4. Root Directory :
-   server ;
-5. configurer variables ;
-6. connecter Blob Store ;
-7. déployer ;
-8. récupérer URL Vercel ;
-9. tester :
-   /api/health ;
-10. mettre URL dans mobile/.env ;
-11. relancer Expo.
-
-============================================================
-90. DONNÉES MONGODB
-============================================================
-
-Toutes ces données doivent être dans Atlas :
-
-Users
-
-Shops
-
-Products
-
-Donc :
-
-changer de téléphone
-
-ne doit pas faire perdre :
-
-utilisateurs
-
-boutiques
-
-produits.
-
-Les images sont dans Vercel Blob.
-
-============================================================
-91. PAS DE LOCAL STORAGE POUR DONNÉES PRINCIPALES
-============================================================
-
-Le mobile peut stocker localement :
-
-JWT
-
-états temporaires
-
-cache UI éventuel.
-
-Mais il ne doit PAS utiliser AsyncStorage/SecureStore comme base principale pour :
-
-Users
-
-Shops
-
-Products.
-
-MongoDB Atlas reste la source de vérité.
-
-============================================================
-92. EXTENSIBILITÉ
-============================================================
-
-Préparer architecture pour :
-
-- vraie auth ;
-- plusieurs Users par Shop ;
-- clients ;
-- nouveaux rôles ;
-- catégories ;
-- nouvelles Tabs ;
-- recherche ;
-- filtres ;
-- scan code-barres ;
-- commandes ;
-- notifications ;
-- géolocalisation ;
-- reconnaissance IA ;
-- changement fournisseur stockage ;
-- images multiples.
-
-NE PAS implémenter maintenant.
-
-============================================================
-93. FUTURE IA PRODUITS
-============================================================
-
-À terme :
-
-photo
-  ↓
-IA
-  ↓
-caractéristiques
-  ↓
-comparaison Product
-  ↓
-identification
-
-Ne pas développer IA maintenant.
-
-Mais conserver des données structurées :
-
-internalCode
-
-name
-
-type
-
-brand
-
-model
-
-reference
-
-sku
-
-barcode
-
-colors
-
-sizes
-
-material
-
-targetAudience
-
-description
-
-customAttributes
-
-imageUrl
-
-shopId
-
-============================================================
-94. TYPESCRIPT
-============================================================
-
-TypeScript strict raisonnablement.
-
-Éviter :
-
-any.
-
-Créer types cohérents :
-
-UserRole
-
-AuthUser
-
-User
-
-Shop
-
-Product
-
-CustomAttribute
-
-ApiResponse<T>
-
-ApiErrorResponse
-
-Ne pas avoir plusieurs définitions contradictoires.
-
-============================================================
-95. NE PAS FAIRE
-============================================================
-
-INTERDIT :
-
-connexion MongoDB depuis mobile
-
-credential Mongo dans mobile
-
-Blob token dans mobile
-
-JWT secret dans mobile
-
-plusieurs ADMIN
-
-boutiques codées en dur
-
-produits codés en dur
-
-faux résultats API
-
-mock de DB à la place MongoDB
-
-filesystem Vercel pour images
-
-server/uploads
-
-base64 image dans MongoDB
-
-5 copies de ProductForm
-
-droits vérifiés seulement frontend
-
-shopId fiable parce qu'il vient du téléphone
-
-role fiable parce qu'il vient du téléphone
-
-TODO pour fonctionnalité MVP
-
-============================================================
-96. ORDRE D'IMPLÉMENTATION
-============================================================
-
-PHASE 1
-Inspecter projet.
-
-PHASE 2
-Créer architecture.
-
-PHASE 3
-Backend Express TypeScript.
-
-PHASE 4
-Mongo connection.
-
-PHASE 5
-Models.
-
-PHASE 6
-Admin unique.
-
-PHASE 7
-Mock auth.
-
-PHASE 8
-JWT middleware.
-
-PHASE 9
-Role/ownership middleware.
-
-PHASE 10
-Shop creation/deletion.
-
-PHASE 11
-Vercel Blob StorageService.
-
-PHASE 12
-Product CRUD.
-
-PHASE 13
-Tests backend.
-
-PHASE 14
-Expo app.
-
-PHASE 15
-Expo Router.
-
-PHASE 16
-SecureStore/AuthContext.
-
-PHASE 17
-Login.
-
-PHASE 18
-Admin Tabs.
-
-PHASE 19
-Users.
-
-PHASE 20
-Shop creation.
-
-PHASE 21
-Admin Product management.
-
-PHASE 22
-Shop Tabs.
-
-PHASE 23
-Shop Product management.
-
-PHASE 24
-ProductForm.
-
-PHASE 25
-Image picker/upload.
-
-PHASE 26
-Error states.
-
-PHASE 27
-Typecheck.
-
-PHASE 28
-Build backend.
-
-PHASE 29
-README.
-
-PHASE 30
-Audit final.
-
-============================================================
-97. AUDIT FINAL OBLIGATOIRE
-============================================================
-
-AVANT de dire terminé vérifier :
-
-[ ] Expo démarre
-
-[ ] Expo Go fonctionne
-
-[ ] Backend local démarre
-
-[ ] Backend compatible Vercel
-
-[ ] /api/health fonctionne
-
-[ ] MongoDB fonctionne
-
-[ ] un seul ADMIN
-
-[ ] seed idempotent
-
-[ ] ADMIN login mock
-
-[ ] Boutique login mock
-
-[ ] SecureStore fonctionne
-
-[ ] logout fonctionne
-
-[ ] restoreSession fonctionne
-
-[ ] Users fonctionne
-
-[ ] create Shop fonctionne
-
-[ ] delete Shop fonctionne
-
-[ ] create Product fonctionne
-
-[ ] update Product fonctionne
-
-[ ] delete Product fonctionne
-
-[ ] image Blob create fonctionne
-
-[ ] image Blob update fonctionne
-
-[ ] image Blob delete fonctionne
-
-[ ] admin gère n'importe quel Shop
-
-[ ] boutique gère uniquement son Shop
-
-[ ] cross-shop retourne 403
-
-[ ] user supprimé ne garde pas accès
-
-[ ] aucun secret mobile
-
-[ ] aucun fichier uploads persistant
-
-[ ] aucune donnée fictive
-
-[ ] TypeScript passe
-
-[ ] aucun import cassé
-
-[ ] aucun TODO MVP
-
-============================================================
-98. SI UNE ERREUR APPARAÎT
-============================================================
-
-Ne supprime pas la fonctionnalité.
-
-1. identifier cause ;
-2. corriger ;
-3. relancer typecheck ;
-4. relancer test concerné ;
-5. vérifier qu'aucune autre fonctionnalité n'a été cassée.
-
-Ne prétends jamais qu'un test est passé si tu ne l'as pas exécuté.
-
-Si un test nécessite une ressource externe non disponible :
-
-par exemple mes credentials MongoDB ou mon Blob Store,
-
-indiquer clairement :
-
-NON TESTÉ - CREDENTIAL EXTERNE REQUISE
-
-au lieu d'inventer un succès.
-
-============================================================
-99. CREDENTIALS
-============================================================
-
-NE ME DEMANDE PAS de mettre mes credentials dans le code.
-
-Créer les placeholders.
-
-Moi-même je fournirai :
-
-MONGODB_URI
-
-JWT_SECRET
-
-BLOB_READ_WRITE_TOKEN
-
-dans :
-
-server/.env
-
-pour local
-
-et :
-
-Vercel Environment Variables
-
-pour Vercel.
-
-Ne jamais afficher ces valeurs dans les logs.
-
-============================================================
-100. LIVRAISON FINALE
-============================================================
-
-À la fin donne-moi :
-
-1. résumé de ce qui a été créé ;
-
-2. arborescence importante ;
-
-3. commandes backend local ;
-
-4. endroit exact pour MONGODB_URI ;
-
-5. endroit exact pour BLOB_READ_WRITE_TOKEN ;
-
-6. commandes Expo ;
-
-7. procédure Expo Go ;
-
-8. procédure Vercel ;
-
-9. variables Vercel nécessaires ;
-
-10. URL à mettre dans EXPO_PUBLIC_SERVER_URL ;
-
-11. scénario test Admin ;
-
-12. scénario test Boutique ;
-
-13. scénario test plusieurs téléphones ;
-
-14. éléments réellement testés ;
-
-15. éléments non testés faute de credentials externes.
-
-============================================================
-101. RÉSULTAT FONCTIONNEL ATTENDU
-============================================================
-
-Le résultat final doit permettre exactement :
-
-PREMIER LANCEMENT
-
-Application
-
-Connexion
-
-[ Administrateur ]
-
-[ Boutique ]
-
-Aucune boutique existe encore.
-
-Je clique :
-
-Administrateur.
-
-Je suis connecté.
+Ajouter proprement, par exemple :
+
+```text
+server/src/
+├── controllers/
+│   └── ai.controller.ts
+│
+├── routes/
+│   └── ai.routes.ts
+│
+├── services/
+│   ├── gemini.service.ts
+│   ├── visual-analysis.service.ts
+│   ├── product-match.service.ts
+│   └── distance.service.ts
+│
+├── schemas/
+│   └── visual-product-profile.schema.ts
+│
+├── constants/
+│   ├── product-types.ts
+│   └── matching.ts
+│
+└── types/
+    └── visual-product-profile.ts
+```
+
+Adapter selon l’architecture réelle existante.
+
+Ne pas créer de doublons inutiles.
+
+---
+
+# 65. STRUCTURE MOBILE
+
+Ajouter proprement :
+
+```text
+mobile/app/(user)/
+```
+
+et éventuellement :
+
+```text
+mobile/src/api/ai.api.ts
+mobile/src/components/ProductSearchResultCard.tsx
+mobile/src/components/ProductImageSearch.tsx
+```
+
+Réutiliser les composants existants lorsque pertinent.
+
+---
+
+# 66. SÉCURITÉ DES ROUTES
 
 ADMIN :
 
-Accueil
-Users
-
-Users :
-
-Administrateur
-
-[ + Ajouter une boutique ]
-
-Je crée :
-
-Nike Alger.
-
-Je me déconnecte.
-
-LOGIN :
-
-Administrateur
-Boutique
-
-Je clique :
-
-Boutique.
-
-Nike Alger existe.
-
-Je me connecte.
+conserve tous ses droits actuels.
 
 BOUTIQUE :
 
-Accueil
-Produits
+conserve uniquement ses produits.
 
-J'ajoute un produit avec :
+USER :
 
-image
-nom
+NE PEUT PAS :
+
+```text
+créer boutique
+supprimer boutique
+modifier boutique
+créer produit
+modifier produit
+supprimer produit
+accéder /api/users
+```
+
+USER peut :
+
+```text
+/api/auth/me
+/api/ai/product-search
+```
+
+et uniquement les endpoints explicitement autorisés.
+
+---
+
+# 67. INFORMATIONS RETOURNÉES AU USER
+
+USER peut recevoir les informations publiques nécessaires :
+
+Produit :
+
+```text
+name
+brand
 type
-marque
-modèle
-référence
-SKU
-couleurs
-tailles
-matière
-description
-prix
+model
+reference
+colors
+sizes
 stock
-caractéristiques
+price
+currency
+imageUrl
+```
 
-L'image va dans Vercel Blob.
+Boutique :
 
-Les informations vont dans MongoDB Atlas.
+```text
+name
+phone
+address
+distance
+```
 
-Je me déconnecte.
+Ne jamais retourner :
 
-Je me reconnecte ADMIN.
+```text
+JWT secret
+Mongo URI
+Gemini keys
+Blob credentials
+données backend internes
+```
 
-Users
--> Nike Alger
--> Gérer les produits.
+---
 
-Je retrouve exactement le produit.
+# 68. PRODUIT CATALOGUE ET USER : MÊME ANALYSE
 
-Je peux :
+C’est une règle architecturale fondamentale.
 
-modifier
-supprimer
-ajouter.
+NE PAS avoir :
 
-Si j'installe/teste l'application sur un autre téléphone configuré avec le même :
+```text
+catalog-analysis.service
+```
 
-EXPO_PUBLIC_SERVER_URL
+avec un prompt
 
-je retrouve les mêmes :
+et :
 
-Users
-Shops
-Products
+```text
+user-analysis.service
+```
 
-car ils viennent tous du backend Vercel et de MongoDB Atlas.
+avec un autre prompt totalement différent.
 
-============================================================
-102. COMMENCE
-============================================================
+Utiliser la même fonction centrale :
 
-COMMENCE MAINTENANT.
+```text
+analyzeProductImage()
+```
 
-Première action :
+afin que les données soient comparables.
 
-inspecte le dossier courant.
+---
 
-Ensuite :
+# 69. VALIDATION STRUCTURED OUTPUT
 
-implémente le projet dans l'ordre imposé.
+Même avec JSON Schema Gemini :
 
-Ne me redemande pas quelle architecture utiliser.
+valider côté backend.
 
-Elle est définie dans ce cahier des charges.
+Utiliser Zod ou la solution de validation déjà utilisée.
+
+Si Gemini renvoie une structure invalide :
+
+* ne pas planter ;
+* éventuellement réessayer une fois ;
+* sinon erreur IA contrôlée.
+
+---
+
+# 70. TIMEOUT GEMINI
+
+Les requêtes Gemini ne doivent pas bloquer éternellement une Vercel Function.
+
+Ajouter un timeout raisonnable.
+
+Si timeout :
+
+```text
+AI_TIMEOUT
+```
+
+avec message utilisateur :
+
+```text
+L’analyse prend trop de temps. Réessayez.
+```
+
+---
+
+# 71. LOGS GEMINI
+
+Logger uniquement :
+
+```text
+model utilisé
+durée
+succès/échec
+type erreur
+```
+
+Ne jamais logger :
+
+```text
+API key
+image base64 complète
+MONGODB_URI
+JWT
+```
+
+---
+
+# 72. DONNÉES CATALOGUE IA
+
+Pour Product :
+
+stocker :
+
+```text
+aiAnalysisModel
+aiAnalyzedAt
+aiVisualProfile
+```
+
+Cela permet plus tard de savoir avec quelle version le produit a été analysé.
+
+---
+
+# 73. VERSION DU PROFIL
+
+Ajouter par exemple :
+
+```text
+aiProfileVersion = 1
+```
+
+ou :
+
+```text
+schemaVersion = 1
+```
+
+dans le profil.
+
+Ainsi, quand le schéma changera plus tard :
+
+on pourra réanalyser les anciens produits.
+
+---
+
+# 74. NE PAS RENDRE PRODUCTFORM COMPLIQUÉ
+
+L’objectif UX est :
+
+```text
+Photo
+Nom
+Type
+Marque
+Couleur
+Tailles
+Stock
+Prix
+```
+
+et quelques champs optionnels.
+
+L’IA fait le travail visuel compliqué.
+
+NE PAS demander au commerçant de saisir manuellement :
+
+```text
+largeur col
+type couture
+forme bord-côte
+texture exacte
+silhouette
+logo position
+etc.
+```
+
+Ces informations sont principalement calculées automatiquement.
+
+---
+
+# 75. SI LA BOUTIQUE CONNAÎT LA RÉFÉRENCE
+
+Les champs :
+
+```text
+model
+reference
+sku
+barcode
+```
+
+restent très importants.
+
+Si connus :
+
+ils améliorent énormément l’identification.
+
+Mais :
+
+ne pas rendre tous obligatoires.
+
+Pour une petite boutique :
+
+```text
+Nom
+Type
+Marque
+Couleur
+```
+
+doivent suffire pour créer facilement un produit.
+
+---
+
+# 76. RECHERCHE SANS PROFIL IA
+
+Si Product ancien :
+
+```text
+aiVisualProfile = null
+```
+
+créer un profil de fallback minimal depuis :
+
+```text
+name
+type
+brand
+colors
+material
+model
+reference
+description
+```
+
+Cela évite que les anciens produits disparaissent complètement des recherches.
+
+---
+
+# 77. PAS D’IA POUR LE CALCUL DE DISTANCE
+
+Gemini ne décide PAS quelle boutique est la plus proche.
+
+Le backend calcule mathématiquement :
+
+```text
+distanceKm
+```
+
+à partir des coordonnées.
+
+---
+
+# 78. PAS D’IA POUR LES PERMISSIONS
+
+Gemini ne décide JAMAIS :
+
+```text
+qui peut modifier quel produit
+```
+
+Toutes les permissions actuelles restent backend/JWT/MongoDB.
+
+---
+
+# 79. VIE PRIVÉE IMAGE USER
+
+Avant première recherche IA, afficher une information courte :
+
+```text
+L’image sélectionnée sera envoyée au service d’analyse Gemini afin d’identifier le produit.
+```
+
+Pas besoin d’un énorme écran juridique dans cette V1.
+
+Mais l’utilisateur doit comprendre que l’image est analysée par un service externe.
+
+---
+
+# 80. ÉTATS UI USER
+
+Gérer :
+
+```text
+IDLE
+IMAGE_SELECTED
+ANALYZING
+RESULTS
+NO_MATCH
+ERROR
+```
+
+ANALYZING :
+
+```text
+Analyse du produit…
+```
+
+avec ActivityIndicator.
+
+Empêcher :
+
+```text
+20 clics sur Rechercher
+```
+
+pendant la même requête.
+
+---
+
+# 81. ERREURS USER
+
+Messages simples :
+
+API indisponible :
+
+```text
+Impossible de contacter le serveur.
+```
+
+Gemini quota :
+
+```text
+Le service d’analyse est temporairement saturé.
+Réessayez dans quelques instants.
+```
+
+Image invalide :
+
+```text
+Cette image ne peut pas être analysée.
+```
+
+Aucun produit :
+
+```text
+Aucun produit suffisamment similaire n’a été trouvé dans les boutiques.
+```
+
+Localisation refusée :
+
+```text
+Résultats affichés sans tri par distance.
+```
+
+---
+
+# 82. ACTUALISATION
+
+Les produits ajoutés par une boutique doivent être immédiatement disponibles pour les recherches USER dès qu’ils sont présents dans MongoDB.
+
+Aucune liste de produits codée en dur.
+
+---
+
+# 83. TEST AUTH USER
+
+Tester :
+
+```text
+DB existante
+↓
+seed
+↓
+ADMIN toujours unique
+USER créé si absent
+```
+
+Login :
+
+```text
+Administrateur
+Boutique
+Utilisateur
+```
+
+USER clique :
+
+```text
+Utilisateur
+```
+
+=> connexion USER.
+
+---
+
+# 84. TEST PERMISSIONS USER
+
+Token USER :
+
+```text
+POST /api/shops
+=> 403
+
+DELETE /api/shops/:id
+=> 403
+
+POST /api/shops/:id/products
+=> 403
+
+PATCH Product
+=> 403
+
+DELETE Product
+=> 403
+```
+
+Recherche IA :
+
+```text
+POST /api/ai/product-search
+=> autorisé
+```
+
+---
+
+# 85. TEST PRODUITS SIMILAIRES
+
+Créer deux produits de test.
+
+A :
+
+```text
+Pull noir
+Nike
+maille fine
+petit logo blanc poitrine gauche
+regular
+```
+
+B :
+
+```text
+Pull noir
+Nike
+maille épaisse
+gros logo blanc central
+oversized
+```
+
+L’image ressemblant à A doit donner :
+
+```text
+score A > score B
+```
+
+de manière significative.
+
+Créer un vrai test automatisé du moteur de matching pour ce cas.
+
+---
+
+# 86. TEST MARQUE INCONNUE
+
+Image sans logo.
+
+Gemini :
+
+```text
+brand = null
+```
+
+Le matching ne doit pas pénaliser fortement parce que la marque USER est inconnue.
+
+---
+
+# 87. TEST MAUVAIS PRODUIT PROCHE
+
+Produit exact :
+
+```text
+8 km
+score 94
+```
+
+Produit ressemblant vaguement :
+
+```text
+500 mètres
+score 60
+```
+
+Le résultat à 500 mètres ne doit PAS devenir la première recommandation simplement parce qu’il est proche.
+
+---
+
+# 88. TEST DEUX BOUTIQUES MÊME PRODUIT
+
+Boutique A :
+
+```text
+1.2 km
+Produit score 92
+```
+
+Boutique B :
+
+```text
+5 km
+Produit score 93
+```
+
+Comme les deux produits sont dans la même fenêtre de haute correspondance :
+
+la boutique A peut être affichée en premier car beaucoup plus proche.
+
+---
+
+# 89. TEST SANS LOCALISATION
+
+USER refuse localisation.
+
+La recherche doit fonctionner.
+
+Distance :
+
+```text
+null
+```
+
+Trier alors principalement par score.
+
+---
+
+# 90. TEST TAILLE
+
+USER :
+
+```text
+taille = L
+```
+
+Produit A :
+
+```text
+sizes = [S, M]
+```
+
+Produit B :
+
+```text
+sizes = [M, L, XL]
+```
+
+À qualité visuelle équivalente :
+
+B est prioritaire.
+
+---
+
+# 91. TEST GEMINI DOWN
+
+Toutes les clés échouent.
+
+Résultat :
+
+* backend ne crash pas ;
+* aucune clé affichée ;
+* mobile affiche une erreur propre.
+
+---
+
+# 92. TEST CRÉATION PRODUIT GEMINI DOWN
+
+Boutique crée un produit.
+
+Vercel Blob fonctionne.
+
+MongoDB fonctionne.
+
+Gemini échoue.
+
+Résultat :
+
+```text
+Product existe
+aiAnalysisStatus = FAILED
+```
+
+Le commerçant peut toujours gérer le produit.
+
+---
+
+# 93. TEST RETRY ANALYSE
+
+Gemini redevient disponible.
+
+Cliquer :
+
+```text
+Réessayer l’analyse
+```
+
+Résultat :
+
+```text
+aiAnalysisStatus = READY
+aiVisualProfile rempli
+```
+
+---
+
+# 94. TEST IMAGE USER NON STOCKÉE
+
+Après recherche :
+
+vérifier :
+
+```text
+aucun nouveau Blob USER
+aucun document SearchImage MongoDB
+aucun fichier local persistant
+```
+
+---
+
+# 95. TEST API KEYS
+
+Mocker :
+
+```text
+key1 -> 401
+key2 -> succès
+```
+
+Résultat :
+
+analyse réussie avec key2.
+
+Tester :
+
+```text
+key1 -> erreur
+key2 -> erreur
+key3 -> erreur
+```
+
+Résultat :
+
+erreur propre après nombre limité d’essais.
+
+---
+
+# 96. TEST STRUCTURED OUTPUT
+
+Tester avec une réponse Gemini valide.
+
+Tester avec réponse invalide.
+
+Une réponse invalide ne doit jamais provoquer un crash incontrôlé.
+
+---
+
+# 97. TEST DISTANCE
+
+Créer coordonnées connues.
+
+Vérifier que :
+
+```text
+distance.service.ts
+```
+
+retourne une distance réaliste.
+
+---
+
+# 98. README
+
+Mettre à jour README avec :
+
+### Nouveau rôle
+
+```text
+USER
+```
+
+### Gemini
+
+Variables Vercel :
+
+```text
+GEMINI_API_KEYS
+GEMINI_MODEL
+GEMINI_FALLBACK_MODEL
+```
+
+### Mobile
+
+Aucune clé Gemini.
+
+### Localisation
+
+expliquer :
+
+```text
+expo-location
+```
+
+### Flux
+
+```text
+Photo USER
+↓
+Gemini
+↓
+VisualProfile
+↓
+Matching MongoDB
+↓
+Boutiques
+↓
+Distance
+```
+
+---
+
+# 99. VARIABLES VERCEL FINALES
+
+Ne supprimer aucune variable backend actuelle.
+
+Ajouter seulement les nouvelles nécessaires.
+
+Exemple :
+
+```text
+MONGODB_URI
+JWT_SECRET
+JWT_EXPIRES_IN
+MOCK_AUTH_ENABLED
+
+GEMINI_API_KEYS
+GEMINI_MODEL
+GEMINI_FALLBACK_MODEL
+```
+
+Les variables Vercel Blob/OIDC existantes restent gérées comme actuellement dans le projet.
+
+---
+
+# 100. MOBILE .ENV
+
+NE PAS ajouter Gemini.
+
+Le mobile continue essentiellement à avoir :
+
+```env
+EXPO_PUBLIC_SERVER_URL=https://mon-backend.vercel.app
+```
+
+---
+
+# 101. ARCHITECTURE FINALE
+
+```text
+                      ┌─────────────────────┐
+                      │   Application Expo  │
+                      └──────────┬──────────┘
+                                 │
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                     │
+         ADMIN                BOUTIQUE                USER
+           │                     │                     │
+           │                     │                 Photo/Image
+           │                     │                     │
+           └──────────────┬──────┘                     │
+                          │                            │
+                          ▼                            ▼
+                  Backend Vercel                Backend Vercel
+                          │                            │
+                  MongoDB / Blob                      ▼
+                                                   Gemini
+                                                     │
+                                                     ▼
+                                             VisualProductProfile
+                                                     │
+                                                     ▼
+                                              Matching Products
+                                                     │
+                                                     ▼
+                                                MongoDB Atlas
+                                                     │
+                                                     ▼
+                                               Shops trouvés
+                                                     │
+                                                     ▼
+                                          Tri par proximité
+```
+
+---
+
+# 102. FLUX COMPLET ATTENDU
+
+Premier écran :
+
+```text
+Administrateur
+Boutique
+Utilisateur
+```
+
+Je clique :
+
+```text
+Utilisateur
+```
+
+Accueil :
+
+```text
+Trouver un produit
+
+[ Prendre une photo ]
+
+[ Choisir une image ]
+```
+
+Je sélectionne une capture d’écran d’un pull.
+
+Je clique :
+
+```text
+Rechercher ce produit
+```
+
+Backend :
+
+```text
+image
+↓
+Gemini
+↓
+JSON structuré
+↓
+matching produits MongoDB
+↓
+récupération Shops
+↓
+distance
+```
+
+Application :
+
+```text
+Produit détecté :
+Pull noir Nike...
+
+Boutiques correspondantes :
+
+1. Boutique A
+   1.2 km
+   Alger Centre
+   0550000000
+   Tailles M L XL
+   Stock déclaré : 3
+   Correspondance : 92 %
+
+   [ Appeler ]
+
+2. Boutique B
+   4.7 km
+   ...
+```
+
+---
+
+# 103. AUDIT FINAL OBLIGATOIRE
+
+Avant de dire terminé vérifier :
+
+```text
+[ ] ADMIN fonctionne encore
+[ ] BOUTIQUE fonctionne encore
+[ ] USER ajouté
+[ ] seed USER idempotent
+[ ] login affiche 3 rôles
+[ ] navigation USER protégée
+[ ] caméra fonctionne
+[ ] galerie fonctionne
+[ ] capture sélectionnable
+[ ] image compressée
+[ ] image USER non persistée
+[ ] Gemini uniquement backend
+[ ] aucune clé Gemini mobile
+[ ] structured output utilisé
+[ ] JSON validé backend
+[ ] même VisualProfile catalogue / USER
+[ ] aiVisualProfile Product
+[ ] matching déterministe
+[ ] produits similaires différenciés
+[ ] score calculé
+[ ] distance calculée
+[ ] proximité après matching
+[ ] localisation refusée supportée
+[ ] adresse boutique affichée
+[ ] téléphone affiché
+[ ] bouton Appeler fonctionne
+[ ] taille optionnelle fonctionne
+[ ] stock 0 correctement traité
+[ ] Gemini indisponible correctement géré
+[ ] création produit reste possible si Gemini down
+[ ] retry analyse produit
+[ ] aucune boucle API keys
+[ ] aucune API key loggée
+[ ] TypeScript compile
+[ ] backend build
+[ ] mobile typecheck
+[ ] Expo démarre
+[ ] aucun ancien CRUD cassé
+```
+
+---
+
+# 104. IMPORTANT : NE PAS MENTIR SUR LES TESTS
+
+Si les vraies clés Gemini ne sont pas fournies :
+
+ne dis pas :
+
+```text
+Gemini testé avec succès
+```
+
+Utilise des mocks pour les tests automatiques et indique :
+
+```text
+Test réel Gemini non exécuté : clé requise
+```
+
+Même principe pour :
+
+* MongoDB externe ;
+* Vercel ;
+* appareil physique.
+
+---
+
+# 105. ORDRE D’IMPLÉMENTATION
+
+Travaille dans cet ordre :
+
+```text
+1. Inspecter projet actuel
+2. Ajouter rôle USER
+3. Modifier seed
+4. Modifier auth/options
+5. Modifier Login
+6. Ajouter navigation USER
+7. Ajouter écran Accueil USER
+8. Ajouter caméra/galerie
+9. Ajouter compression image
+10. Ajouter configuration Gemini backend
+11. Créer gemini.service
+12. Créer schéma VisualProductProfile
+13. Créer visual-analysis.service
+14. Étendre Product
+15. Analyse catalogue automatique
+16. Retry analyse produit
+17. Créer ai/product-search
+18. Créer product-match.service
+19. Ajouter coordonnées Shop
+20. Géocodage adresse
+21. Ajouter localisation USER
+22. Créer distance.service
+23. Créer tri final
+24. Créer UI résultats
+25. Appel téléphone
+26. Tests
+27. Typecheck
+28. Build
+29. README
+30. Audit complet
+```
+
+---
+
+# 106. RÈGLE FINALE
+
+Je veux une **V1 simple à utiliser**, pas une usine à gaz.
+
+Le commerçant doit pouvoir créer un produit rapidement.
+
+La complexité nécessaire à la reconnaissance visuelle doit être principalement gérée automatiquement par :
+
+```text
+photo produit
++
+Gemini
++
+profil visuel structuré
+```
+
+et non par :
+
+```text
+30 champs obligatoires à remplir manuellement.
+```
+
+Le USER doit seulement :
+
+```text
+prendre/choisir une image
+↓
+éventuellement indiquer sa taille
+↓
+Rechercher
+```
+
+Puis l’application lui indique les boutiques réellement présentes dans la base, avec adresse, téléphone et distance lorsque disponible.
+
+COMMENCE MAINTENANT PAR INSPECTER LE PROJET EXISTANT.
+
+NE RECRÉE RIEN QUI FONCTIONNE DÉJÀ.
+
+MODIFIE PROPREMENT LE PROJET ET EXÉCUTE LES TESTS À CHAQUE ÉTAPE.
+

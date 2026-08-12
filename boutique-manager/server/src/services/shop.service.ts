@@ -3,7 +3,7 @@ import { USER_ROLES } from '../constants/roles.js';
 import { Product } from '../models/Product.js';
 import { Shop } from '../models/Shop.js';
 import { User } from '../models/User.js';
-import type { CreateShopInput } from '../schemas/shop.schema.js';
+import type { CreateShopInput, UpdateShopInput } from '../schemas/shop.schema.js';
 import { ApiError } from '../utils/ApiError.js';
 import { deleteProductImage } from './storage.service.js';
 
@@ -21,6 +21,22 @@ export async function createShopWithUser(input: CreateShopInput) {
     await Shop.deleteOne({ _id: shop._id });
     throw error;
   }
+}
+
+export async function updateShopDetails(shopId: string, input: UpdateShopInput) {
+  const shop = await Shop.findByIdAndUpdate(shopId, input, { new: true, runValidators: true });
+  if (!shop) {
+    throw new ApiError(404, 'Boutique introuvable.', 'SHOP_NOT_FOUND');
+  }
+  const user = await User.findOneAndUpdate(
+    { shopId, role: USER_ROLES.BOUTIQUE },
+    { displayName: shop.name },
+    { new: true },
+  );
+  if (!user) {
+    throw new ApiError(404, 'Compte boutique introuvable.', 'SHOP_USER_NOT_FOUND');
+  }
+  return { shop, user };
 }
 
 export async function deleteShopCascade(shopId: string): Promise<void> {
@@ -44,14 +60,17 @@ export async function deleteShopCascade(shopId: string): Promise<void> {
     await session.endSession();
   }
 
+  const storedProducts = products.filter(
+    (product): product is typeof product & { imageStorageKey: string } => Boolean(product.imageStorageKey),
+  );
   const results = await Promise.allSettled(
-    products.map((product) => deleteProductImage(product.imageStorageKey)),
+    storedProducts.map((product) => deleteProductImage(product.imageStorageKey)),
   );
   results.forEach((result, index) => {
     if (result.status === 'rejected') {
       console.error('Suppression Blob échouée après suppression boutique.', {
         shopId,
-        storageKey: products[index]?.imageStorageKey,
+        storageKey: storedProducts[index]?.imageStorageKey,
         reason: result.reason instanceof Error ? result.reason.message : 'Erreur inconnue',
       });
     }

@@ -1,0 +1,96 @@
+import { z } from 'zod';
+import { PRODUCT_TYPE_VALUES } from '../constants/product-types.js';
+
+const confidence = z.number().min(0).max(1);
+const nullableText = z.string().trim().min(1).nullable();
+
+export const visualProductProfileSchema = z.object({
+  schemaVersion: z.literal(1),
+  isProduct: z.boolean(),
+  multipleProductsDetected: z.boolean(),
+  productFamily: z.enum(['clothing', 'footwear', 'bag', 'accessory', 'other', 'unknown']),
+  productType: z.enum(PRODUCT_TYPE_VALUES as [string, ...string[]]),
+  subtype: nullableText,
+  brand: nullableText,
+  modelOrLine: nullableText,
+  primaryColor: nullableText,
+  secondaryColors: z.array(z.string().trim().min(1)).max(12),
+  pattern: nullableText,
+  materialAppearance: z.array(z.string().trim().min(1)).max(12),
+  texture: z.array(z.string().trim().min(1)).max(12),
+  silhouette: nullableText,
+  fit: nullableText,
+  necklineOrCollar: nullableText,
+  sleeveLength: nullableText,
+  closure: nullableText,
+  pocketDetails: z.array(z.string().trim().min(1)).max(12),
+  logoDetails: z.array(z.string().trim().min(1)).max(12),
+  visibleText: z.array(z.string().trim().min(1)).max(12),
+  distinctiveFeatures: z.array(z.string().trim().min(1)).max(20),
+  styleKeywords: z.array(z.string().trim().min(1)).max(12),
+  visualFingerprintTokens: z.array(z.string().trim().min(1)).min(4).max(12),
+  shortDescription: z.string().trim().min(1).max(500),
+  confidence,
+  fieldConfidence: z.object({
+    productType: confidence,
+    brand: confidence,
+    model: confidence,
+    color: confidence,
+    pattern: confidence,
+  }),
+});
+
+export type VisualProductProfile = z.infer<typeof visualProductProfileSchema>;
+
+export const visualProductProfileJsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'schemaVersion', 'isProduct', 'multipleProductsDetected', 'productFamily', 'productType',
+    'subtype', 'brand', 'modelOrLine', 'primaryColor', 'secondaryColors', 'pattern',
+    'materialAppearance', 'texture', 'silhouette', 'fit', 'necklineOrCollar',
+    'sleeveLength', 'closure', 'pocketDetails', 'logoDetails', 'visibleText',
+    'distinctiveFeatures', 'styleKeywords', 'visualFingerprintTokens', 'shortDescription',
+    'confidence', 'fieldConfidence',
+  ],
+  properties: {
+    schemaVersion: { type: 'integer', enum: [1] },
+    isProduct: { type: 'boolean' },
+    multipleProductsDetected: { type: 'boolean' },
+    productFamily: { type: 'string', enum: ['clothing', 'footwear', 'bag', 'accessory', 'other', 'unknown'] },
+    productType: { type: 'string', enum: PRODUCT_TYPE_VALUES },
+    subtype: { type: ['string', 'null'] },
+    brand: { type: ['string', 'null'], description: 'Only when a brand is clearly visible; otherwise null.' },
+    modelOrLine: { type: ['string', 'null'], description: 'Only when visible; otherwise null.' },
+    primaryColor: { type: ['string', 'null'] },
+    secondaryColors: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    pattern: { type: ['string', 'null'] },
+    materialAppearance: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    texture: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    silhouette: { type: ['string', 'null'] },
+    fit: { type: ['string', 'null'] },
+    necklineOrCollar: { type: ['string', 'null'] },
+    sleeveLength: { type: ['string', 'null'] },
+    closure: { type: ['string', 'null'] },
+    pocketDetails: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    logoDetails: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    visibleText: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    distinctiveFeatures: { type: 'array', items: { type: 'string' }, maxItems: 20 },
+    styleKeywords: { type: 'array', items: { type: 'string' }, maxItems: 12 },
+    visualFingerprintTokens: { type: 'array', items: { type: 'string' }, minItems: 4, maxItems: 12 },
+    shortDescription: { type: 'string', maxLength: 500 },
+    confidence: { type: 'number', minimum: 0, maximum: 1 },
+    fieldConfidence: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['productType', 'brand', 'model', 'color', 'pattern'],
+      properties: {
+        productType: { type: 'number', minimum: 0, maximum: 1 },
+        brand: { type: 'number', minimum: 0, maximum: 1 },
+        model: { type: 'number', minimum: 0, maximum: 1 },
+        color: { type: 'number', minimum: 0, maximum: 1 },
+        pattern: { type: 'number', minimum: 0, maximum: 1 },
+      },
+    },
+  },
+} as const;

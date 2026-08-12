@@ -32,4 +32,8 @@ export const productsApi = {
     apiRequest<{ deleted: boolean }>(`/api/shops/${shopId}/products/${productId}`, {
       method: 'DELETE',
     }),
+  retryAnalysis: (shopId: string, productId: string) =>
+    apiRequest<{ product: Product }>(`/api/shops/${shopId}/products/${productId}/retry-analysis`, {
+      method: 'POST',
+    }),
 };
